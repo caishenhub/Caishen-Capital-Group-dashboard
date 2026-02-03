@@ -1,4 +1,5 @@
 
+// Added React import to provide access to React namespace and FC type
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -10,7 +11,8 @@ import {
   ChevronRight,
   X,
   Users,
-  LogOut
+  LogOut,
+  Database
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,20 +26,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const isActive = (path: string) => location.pathname === path;
 
   const handleExit = () => {
-    // 1. Limpiamos la sesión del almacenamiento local
     localStorage.removeItem('ccg_session');
-    
-    // 2. Cerramos el menú lateral si está abierto (en móviles)
     if (onClose) onClose();
-    
-    // 3. Redirigimos a la raíz y forzamos recarga para que AuthGate tome el control
     window.location.href = window.location.origin + window.location.pathname;
   };
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Gestión de Accionistas', path: '/users', icon: Users },
     { name: 'Portafolio', path: '/portfolio', icon: PieChart },
+    { name: 'Gestión de Accionistas', path: '/users', icon: Users },
     { name: 'Resumen Ejecutivo', path: '/summary', icon: TrendingUp },
     { name: 'Reportes', path: '/reports', icon: FileText },
   ];

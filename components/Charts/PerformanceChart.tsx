@@ -65,19 +65,26 @@ const data2025 = [
 ];
 
 const data2026 = [
-  { name: 'ENE', year: '2026', portfolio: 1900618, benchmark: 1580000, pYield: 0, bYield: 0 },
+  { name: 'ENE', year: '2026', portfolio: 1928367, benchmark: 1601646, pYield: 1.46, bYield: 1.37 },
 ];
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  selectedYear: number | 'General';
+}
+
+const CustomTooltip = ({ active, payload, selectedYear }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const item = payload[0].payload;
     
-    // Obtenemos el mes de forma numérica para consultar el rendimiento real
-    const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    const monthIdx = monthNames.indexOf(item.name);
-    const yearNum = parseInt(item.year);
+    // REGLA: Si es vista General, solo mostrar datos si es Enero (Inicio de año fijo)
+    if (selectedYear === 'General' && item.name !== 'ENE') {
+      return null;
+    }
     
-    // Obtenemos el rendimiento real almacenado o el histórico para que siempre sea preciso
+    const monthIdx = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'].indexOf(item.name);
+    const yearNum = parseInt(item.year);
     const realYield = getStoredYield(yearNum, monthIdx) * 100;
     
     const colorCaishen = realYield >= 0 ? 'text-primary' : 'text-red-400';
@@ -159,7 +166,7 @@ const PerformanceChart: React.FC<{ initialYear?: number | 'General' }> = ({ init
             dy={15}
           />
           <YAxis hide domain={['dataMin - 50000', 'dataMax + 50000']} />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip selectedYear={selectedYear} />} />
           <Legend 
             verticalAlign="top" 
             align="right" 

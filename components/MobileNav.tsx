@@ -6,24 +6,24 @@ import {
   PieChart, 
   TrendingUp, 
   Users,
-  Headset
+  Headset,
+  Database
 } from 'lucide-react';
 
 const MobileNav: React.FC = () => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
-  // Reordenamiento solicitado: Portafolio a la izquierda, Inicio al centro
   const navItems = [
     { name: 'Portafolio', path: '/portfolio', icon: PieChart },
     { name: 'Socios', path: '/users', icon: Users },
-    { name: 'Inicio', path: '/', icon: LayoutDashboard, central: true },
+    { name: 'Libro', path: '/executions', icon: Database, central: true },
     { name: 'Resumen', path: '/summary', icon: TrendingUp },
-    { name: 'Ayuda', path: '/support', icon: Headset },
+    { name: 'Inicio', path: '/', icon: LayoutDashboard },
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-lg border-t border-surface-border pb-safe-area-inset-bottom">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-lg border-t border-surface-border pb-safe-area-inset-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const active = isActive(item.path);

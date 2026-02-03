@@ -59,6 +59,7 @@ const Dashboard: React.FC = () => {
 
   const reserveValue = useMemo(() => {
     if (selectedPeriod === 2022) return 94.25;
+    if (selectedPeriod === 2026) return 94.68;
     return FINANCE_CONFIG.RESERVE_GOAL_PCT;
   }, [selectedPeriod]);
 
@@ -126,7 +127,7 @@ const Dashboard: React.FC = () => {
         />
         <StatCard 
           title="FONDO DE RESERVA" value={`${reserveValue}%`} progress={reserveValue} icon={ShieldCheck} variant="light"
-          changeLabel={selectedPeriod === 2022 ? "Soporte de Pérdidas Activo" : "Cobertura Total Garantizada"}
+          changeLabel={(selectedPeriod === 2022 || selectedPeriod === 2026) ? "Soporte de Pérdidas Activo" : "Cobertura Total Garantizada"}
         />
       </div>
 

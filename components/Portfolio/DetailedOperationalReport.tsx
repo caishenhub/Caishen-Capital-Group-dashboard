@@ -1,9 +1,10 @@
+
 import React, { ReactNode } from 'react';
 import { ShieldCheck, Target, TrendingUp, Landmark, Globe, Coins, Bitcoin, Building2 } from 'lucide-react';
 
 const DetailedOperationalReport: React.FC = () => {
   return (
-    <div className="max-w-3xl mx-auto space-y-12 pb-10">
+    <div className="max-w-3xl mx-auto space-y-12 pb-10 animate-in fade-in slide-in-from-left-4 duration-500">
       {/* Título */}
       <div className="text-center space-y-4">
         <h1 className="text-4xl lg:text-5xl font-black text-accent tracking-tighter uppercase leading-tight">
@@ -39,34 +40,34 @@ const DetailedOperationalReport: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {[
             { 
-              title: 'Divisas (Forex) - 20.6%', 
+              title: 'Divisas (Forex) - 20,60%', 
               icon: Globe, 
               desc: 'Actúa como el motor de liquidez inmediata. Nuestra exposición en el mercado de divisas se centra en pares mayores de alta profundidad, permitiendo rotaciones rápidas de capital y cobertura contra la devaluación sistémica.' 
             },
             { 
-              title: 'Derivados - 30.9%', 
+              title: 'Derivados - 30,90%', 
               icon: Coins, 
               desc: 'Representa la mayor asignación estratégica. Estos instrumentos se utilizan para estructurar posiciones con riesgo acotado, permitiendo exposición a mercados de commodities y metales con un enfoque de protección de capital.' 
             },
             { 
-              title: 'Equity (Acciones) - 10.3%', 
+              title: 'Equity (Acciones) - 10,30%', 
               icon: Landmark, 
               desc: 'Participación en sectores tecnológicos y energéticos de alta resiliencia. Este segmento aporta crecimiento orgánico a largo plazo y dividendos institucionales al flujo de caja del fondo.' 
             },
             { 
-              title: 'Inmobiliario - 25.8%', 
+              title: 'Inmobiliario - 25,80%', 
               icon: Building2, 
               desc: 'La base patrimonial del portafolio. Compuesto por activos tangibles y proyectos de desarrollo, este sector ofrece una baja correlación con los mercados financieros, brindando estabilidad estructural extrema.' 
             },
             { 
-              title: 'Algorítmico / Crypto - 12.4%', 
+              title: 'Algorítmico / Crypto - 12,40%', 
               icon: Bitcoin, 
               desc: 'Segmento de alta eficiencia. Se emplea para capturar ineficiencias de mercado mediante modelos matemáticos, operando con estrictos stop-loss para garantizar que el riesgo esté siempre bajo control.' 
             }
           ].map((item, i) => (
-            <div key={i} className="bg-surface-subtle p-6 rounded-3xl border border-surface-border space-y-3">
+            <div key={i} className="bg-white p-6 rounded-3xl border-2 border-surface-border space-y-3 hover:border-primary transition-all group shadow-sm">
               <div className="flex items-center gap-3 text-accent">
-                <item.icon size={20} className="text-primary-hover" />
+                <item.icon size={20} className="text-primary-hover group-hover:scale-110 transition-transform" />
                 <h3 className="font-black text-sm uppercase tracking-tight">{item.title}</h3>
               </div>
               <p className="text-text-secondary text-xs leading-relaxed font-medium">
@@ -78,7 +79,7 @@ const DetailedOperationalReport: React.FC = () => {
       </section>
 
       {/* Enfoque de Liquidez */}
-      <section className="bg-accent rounded-[35px] p-8 lg:p-10 text-white space-y-6">
+      <section className="bg-accent rounded-[35px] p-8 lg:p-10 text-white space-y-6 shadow-2xl">
         <h2 className="text-2xl font-black tracking-tight uppercase">3. Enfoque de Liquidez y Riesgo</h2>
         <div className="space-y-4 text-gray-300 text-sm leading-relaxed font-medium">
           <p>
@@ -96,12 +97,12 @@ const DetailedOperationalReport: React.FC = () => {
           <TrendingUp className="text-accent" size={24} />
           <h2 className="text-2xl font-black text-accent tracking-tight uppercase">4. Desempeño Consolidado 4T 2025</h2>
         </div>
-        <div className="bg-white border-l-4 border-primary p-6 space-y-4">
+        <div className="bg-white border-l-8 border-primary p-8 rounded-r-3xl shadow-sm space-y-4">
           <p className="text-text-secondary text-base leading-relaxed font-medium">
             Durante el último trimestre del año, el portafolio demostró una **disciplina operativa excepcional**. Los ajustes tácticos se centraron en reducir la exposición a mercados altamente volátiles y reasignar capital hacia instrumentos con flujos de caja predecibles.
           </p>
           <p className="text-text-secondary text-base leading-relaxed font-medium">
-            Se destaca la reducción significativa de la volatilidad interna del fondo y el cumplimiento riguroso de los límites de riesgo establecidos por el comité técnico, cerrando el año con una estructura balanceada que favorece la sostenibilidad sobre la especulación.
+            Se destaca la reducción significativa de la volatilidad interna del fondo y el cumplimiento riguroso de los límites de riesgo establecidos por el comité técnico, cerrando el año con una estructura balanceada que favorece la sostenibilidad sobre la especulación con un retorno anual consolidado del <span className="text-accent font-black">41,77%</span>.
           </p>
         </div>
       </section>
@@ -118,10 +119,10 @@ const DetailedOperationalReport: React.FC = () => {
             { title: 'Optimización Algorítmica', desc: 'Fortalecimiento de modelos cuantitativos para mayor eficiencia en mercados 24/7.' },
             { title: 'Expansión Controlada', desc: 'Apertura hacia nuevos instrumentos diversificadores sin comprometer la liquidez central.' }
           ].map((point, i) => (
-            <div key={i} className="flex gap-4 items-start p-4 bg-surface-subtle rounded-2xl">
-              <div className="size-2 rounded-full bg-primary mt-2"></div>
+            <div key={i} className="flex gap-4 items-start p-6 bg-surface-subtle border border-surface-border rounded-2xl hover:bg-white hover:shadow-md transition-all">
+              <div className="size-3 rounded-full bg-primary mt-1.5 shadow-neon"></div>
               <div>
-                <h4 className="text-sm font-black text-accent uppercase">{point.title}</h4>
+                <h4 className="text-sm font-black text-accent uppercase tracking-tight">{point.title}</h4>
                 <p className="text-xs text-text-secondary font-medium mt-1">{point.desc}</p>
               </div>
             </div>
@@ -135,8 +136,13 @@ const DetailedOperationalReport: React.FC = () => {
           "Cerrando un año de solidez operativa, iniciamos un 2026 con claridad estratégica y compromiso absoluto con la excelencia financiera."
         </p>
         <div className="mt-8 flex flex-col items-center">
-          <Landmark size={40} className="text-text-muted opacity-20" />
-          <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.3em] mt-4">Caishen Capital Group S.A.S. • Comité Técnico</span>
+          <div className="size-16 bg-accent rounded-2xl flex items-center justify-center text-primary mb-4 shadow-xl">
+             <Landmark size={32} />
+          </div>
+          <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.4em] text-center">
+            Caishen Capital Group S.A.S. • Comité Técnico Operativo <br/>
+            Registro de Auditoría: CCG-FIN-2025-Q4
+          </span>
         </div>
       </section>
     </div>
