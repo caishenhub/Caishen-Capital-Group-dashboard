@@ -17,7 +17,8 @@ const Dashboard: React.FC = () => {
 
   const metrics = useMemo(() => {
     const years = [2022, 2023, 2024, 2025, 2026];
-    let currentBalance = FINANCE_CONFIG.BASE_VALUE_PER_SHARE * FINANCE_CONFIG.TOTAL_SHARES;
+    // Fixed: Property name corrected from BASE_VALUE_PER_SHARE to NOMINAL_VALUE_PER_SHARE
+    let currentBalance = FINANCE_CONFIG.NOMINAL_VALUE_PER_SHARE * FINANCE_CONFIG.TOTAL_SHARES;
     const yearlyBalances: Record<number, number> = {};
     const yearlyCompoundYields: Record<number, number> = {};
 

@@ -22,31 +22,17 @@ interface ShareholderProfileProps {
 }
 
 const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack }) => {
-  // Filtro exclusivo para Juan Andres Suarez (#USR-008)
-  const isJuanAndres = user.uid === '#USR-008';
-  
-  // Mes de ingreso: 8 para Juan Andres (Septiembre)
-  const joinMonth = isJuanAndres ? 8 : 0;
-  
-  const [selectedYear, setSelectedYear] = useState(2025);
+  // Año por defecto para la vista del perfil
+  const [selectedYear, setSelectedYear] = useState(2026);
   const [updateKey, setUpdateKey] = useState(0);
   
-  // Calculamos finanzas inyectando los datos específicos autorizados para el usuario #USR-008
+  // Juan Andres tiene ingreso en Septiembre 2025, pero para 2026 participa desde el inicio
+  const joinMonth = (user.uid === '#USR-008' && selectedYear === 2025) ? 8 : 0;
+  
+  // Calculamos finanzas bajo el nuevo esquema global (Capital Fijo + Sumatoria)
   const finances = useMemo(() => {
-    const baseFinances = calculateUserFinance(user.shares, selectedYear, joinMonth);
-    
-    // Aplicación de parámetros autorizados para Juan Andres Suarez en 2025
-    if (isJuanAndres && selectedYear === 2025) {
-      return {
-        ...baseFinances,
-        participation: '4.00%',
-        balance: 4977.00, // Capital base fijo autorizado
-        annualYieldPct: 9.13, // ROI 2025 (%) = (454.40 / 4,977.00) * 100
-        annualProfit: 454.40, // Suma: 114.47 + 108.50 + 119.45 + 111.98
-      };
-    }
-    return baseFinances;
-  }, [user.shares, selectedYear, updateKey, joinMonth, isJuanAndres]);
+    return calculateUserFinance(user.shares, selectedYear, joinMonth);
+  }, [user.shares, selectedYear, updateKey, joinMonth]);
   
   const isAdmin = user.uid === '#ADM-001';
 
@@ -57,16 +43,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
   }, []);
 
   const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
-  // Datos específicos autorizados para el último cuatrimestre 2025 (#USR-008)
-  const realDataJuanAndres = [
-    { pct: 2.30, usd: 114.47 }, // Septiembre (idx 8)
-    { pct: 2.18, usd: 108.50 }, // Octubre (idx 9)
-    { pct: 2.40, usd: 119.45 }, // Noviembre (idx 10)
-    { pct: 2.25, usd: 111.98 }  // Diciembre (idx 11)
-  ];
-
-  const availableYears = isJuanAndres ? [2025, 2026] : [2023, 2024, 2025, 2026];
+  const availableYears = [2025, 2026];
 
   return (
     <div className="bg-[#fcfcfc] min-h-full animate-in fade-in slide-in-from-right-4 duration-500 pb-20 overflow-y-auto">
@@ -87,7 +64,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 <h1 className="text-3xl lg:text-4xl font-black text-accent tracking-tighter">{user.name}</h1>
                 <div className="flex flex-wrap gap-y-2 gap-x-4 text-[11px] font-bold text-text-secondary mt-2">
                   <span className="flex items-center gap-1.5 bg-surface-subtle px-3 py-1.5 rounded-xl border border-surface-border"><Layers size={14} className="text-accent" /> {user.uid}</span>
-                  <span className="flex items-center gap-1.5 bg-surface-subtle px-3 py-1.5 rounded-xl border border-surface-border"><Calendar size={14} className="text-accent" /> {isAdmin ? 'Administrador Maestro' : 'Socio CCG'}</span>
+                  <span className="flex items-center gap-1.5 bg-surface-subtle px-3 py-1.5 rounded-xl border border-surface-border"><Calendar size={14} className="text-accent" /> Socio CCG</span>
                 </div>
               </div>
             </div>
@@ -144,26 +121,14 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {monthNames.map((month, idx) => {
-                  // Filtro para usuarios con ingreso posterior
-                  if (selectedYear === 2025 && idx < joinMonth) {
-                    return null;
-                  }
+                  if (selectedYear === 2025 && idx < joinMonth) return null;
 
-                  let displayYield: number;
-                  let displayProfit: number;
+                  const displayYield = getStoredYield(selectedYear, idx);
+                  const displayProfit = finances.balance * displayYield;
                   const status = getPayoutStatus(selectedYear, idx);
 
-                  // Lógica específica para Juan Andres Suarez en 2025
-                  if (isJuanAndres && selectedYear === 2025 && idx >= 8 && idx <= 11) {
-                    const realValues = realDataJuanAndres[idx - 8];
-                    displayYield = realValues.pct / 100;
-                    displayProfit = realValues.usd;
-                  } else {
-                    displayYield = getStoredYield(selectedYear, idx);
-                    displayProfit = finances.balance * displayYield;
-                  }
-
-                  const formattedProfit = displayProfit.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                  // Ocultar meses futuros sin datos
+                  if (displayYield === 0 && selectedYear === 2026 && idx > 0 && localStorage.getItem(`YIELD_${selectedYear}_${idx}`) === null) return null;
 
                   return (
                     <tr key={`${selectedYear}-${idx}-${updateKey}`} className="hover:bg-surface-subtle/50 transition-colors">
@@ -173,7 +138,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                       <td className="px-8 py-6 text-right font-black text-accent">
                         {displayYield !== 0 ? `+${(displayYield * 100).toFixed(2)}%` : '0.00%'}
                       </td>
-                      <td className="px-8 py-6 text-right font-bold text-text-secondary">${formattedProfit}</td>
+                      <td className="px-8 py-6 text-right font-bold text-text-secondary">${displayProfit.toLocaleString('en-US', { minimumFractionDigits: 3 })}</td>
                       <td className="px-8 py-6 text-center">
                         <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${
                           status === 'PAID' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'
