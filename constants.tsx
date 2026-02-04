@@ -149,27 +149,45 @@ export const MOCK_REPORTS: Report[] = [
     sections: [
       {
         title: '1. Introducción institucional',
-        content: 'Como parte del proceso continuo de fortalecimiento del modelo operativo, optimización del capital colectivo y consolidación de la gestión de riesgo, el Comité Técnico, en conjunto con el Área Administrativa, ha aprobado una actualización estratégica en la estructura del portafolio.\n\nEsta decisión surge del análisis integral del desempeño histórico, los niveles de exposición por activo y las proyecciones del segundo semestre del año.'
+        content: 'Como parte del proceso continuo de fortalecimiento del modelo operativo, optimización del capital colectivo y consolidación de la gestión de riesgo, el Comité Técnico, en conjunto con el Área Administrativa, ha aprobado una actualización estratégica en la estructura del portafolio.\n\nEsta decisión surge del análisis integral del desempeño histórico, los niveles de exposición por activo, la eficiencia en la asignación de recursos y las proyecciones del segundo semestre del año, con el objetivo de robustecer la estabilidad del ecosistema de inversión y mejorar las condiciones estructurales para todos los accionistas.'
       },
       {
         title: '2. Cambio principal de condiciones operativas',
-        content: 'A partir del mes de julio (inicio del segundo semestre del año), todos los inversionistas pasarán a estar vinculados de forma integral al portafolio consolidado.\n\nEsto implica que ya no existirán participaciones segmentadas por sub-portafolios individuales; todos los accionistas participarán proporcionalmente en la totalidad de las operaciones, activos y resultados del portafolio global bajo un esquema unificado.'
+        content: 'A partir del mes de julio (inicio del segundo semestre del año), todos los inversionistas pasarán a estar vinculados de forma integral al portafolio consolidado.\n\nEsto implica que:\n- Ya no existirán participaciones segmentadas por sub-portafolios o estrategias individuales.\n- Todos los accionistas participarán proporcionalmente en la totalidad de las operaciones, activos y resultados del portafolio global.\n- La gestión se realizará bajo un esquema unificado de capital, riesgo y rendimiento.\n\nEste ajuste corresponde a una reorganización estructural del modelo, diseñada para elevar el nivel de eficiencia, control y estabilidad del portafolio en su conjunto.'
       },
       {
         title: '3. Justificación estratégica del cambio',
-        content: 'La unificación del portafolio permite implementar un modelo de gestión más robusto, con beneficios técnicos claros:\n\n- Mayor diversificación real del riesgo.\n- Optimización del capital colectivo bajo una sola matriz operativa.\n- Mejor distribución de utilidades y exposición.\n- Reducción de concentraciones por activo.\n- Fortalecimiento del fondo de reserva.'
+        content: 'La unificación del portafolio permite implementar un modelo de gestión más robusto, con beneficios técnicos claros:',
+        items: [
+          'Mayor diversificación real del riesgo.',
+          'Optimización del capital colectivo bajo una sola matriz operativa.',
+          'Mejor distribución de utilidades y exposición entre todos los accionistas.',
+          'Reducción de concentraciones por activo o estrategia.',
+          'Fortalecimiento del fondo de reserva y de los buffers técnicos.',
+          'Mayor estabilidad frente a escenarios de volatilidad.',
+          'Gestión centralizada del drawdown.',
+          'Estandarización de métricas, reportes y controles.'
+        ]
       },
       {
         title: '4. Beneficios directos para los accionistas',
-        content: 'Con esta actualización, los accionistas obtendrán:\n\n- Participación uniforme en todas las oportunidades del portafolio.\n- Acceso automático a nuevas estrategias.\n- Mayor protección del capital mediante diversificación estructural.\n- Simplificación operativa y contable.\n- Transparencia consolidada en los reportes financieros.'
+        content: 'Con esta actualización estratégica, los accionistas obtendrán:',
+        items: [
+          'Participación uniforme en todas las oportunidades del portafolio.',
+          'Acceso automático a nuevas estrategias sin procesos adicionales.',
+          'Mayor protección del capital mediante diversificación estructural.',
+          'Simplificación operativa y contable.',
+          'Transparencia consolidada en los reportes financieros.',
+          'Mejora en la eficiencia del modelo de distribución de resultados.'
+        ]
       },
       {
         title: '5. Fecha de entrada en vigor',
-        content: 'Esta actualización estratégica regirá oficialmente a partir del mes de julio de 2026 y se aplicará de forma automática a todos los accionistas activos. No se requiere ninguna acción adicional por parte de los inversionistas.'
+        content: 'Esta actualización estratégica regirá oficialmente a partir del mes de julio y se aplicará de forma automática a todos los accionistas activos. No se requiere ninguna acción adicional por parte de los inversionistas para su implementación.'
       },
       {
         title: '6. Mensaje institucional de cierre',
-        content: 'Esta medida busca fortalecer el ecosistema de inversión, priorizando la protección del capital colectivo sobre resultados aislados. Reafirmamos nuestro compromiso con una gestión profesional, estructurada y transparente.\n\nNo es mejor gestor quien persigue el mayor rendimiento puntual, sino quien protege el capital colectivo mediante decisiones sostenibles.'
+        content: 'Esta medida busca fortalecer el ecosistema de inversión, priorizando la protección del capital colectivo sobre resultados aislados, y consolidando un modelo corporativo orientado al largo plazo.\n\nReafirmamos nuestro compromiso con una gestión profesional, estructurada y transparente, sustentada en criterios técnicos y decisiones estratégicas responsables. No es mejor gestor quien persigue el mayor rendimiento puntual, sino quien protege el capital colectivo mediante decisiones sostenibles y disciplinadas.'
       }
     ]
   },
@@ -178,12 +196,30 @@ export const MOCK_REPORTS: Report[] = [
     title: 'Reporte de Riesgo y Mitigación – Enero 2026', 
     date: '22 Ene, 2026', 
     category: 'Riesgos y Mitigación', 
-    summary: 'Actualización sobre exposición en XAUUSD y medidas de mitigación aplicadas durante el periodo.',
-    highlight: 'Riesgo de mercado materializado, gestionado mediante mecanismos internos.',
+    summary: 'Actualización institucional sobre exposición en activos refugio, evaluación de riesgo y medidas de mitigación aplicadas.',
+    highlight: 'Riesgo de mercado materializado, gestionado mediante mecanismos internos de mitigación.',
     sections: [
       {
-        title: 'Resumen Ejecutivo',
-        content: 'Se informa la materialización de un escenario de riesgo de mercado en el activo XAUUSD derivado de volatilidad geopolítica, gestionado exitosamente mediante el fondo de reserva.'
+        title: '1. Resumen Ejecutivo',
+        content: 'En cumplimiento de sus funciones de supervisión y control, el Área Administrativa de Gestión de Riesgo, en conjunto con el Comité Técnico, informa que durante el periodo evaluado se materializó un escenario de riesgo de mercado asociado a la alta volatilidad del activo XAUUSD (oro), derivado del entorno geopolítico internacional y la elevada incertidumbre macroeconómica.\n\nEste escenario obligó a la ejecución de cierres de posiciones en pérdida como medida preventiva de control. No obstante, mediante la aplicación oportuna de los mecanismos internos de mitigación, fue posible equilibrar el portafolio y cerrar el periodo con resultado positivo.'
+      },
+      {
+        title: '2. Riesgo de Mercado – Exposición en Oro (XAUUSD)',
+        content: 'El portafolio mantenía una exposición relevante al activo XAUUSD, previamente evaluada y aprobada dentro de los parámetros de riesgo establecidos. Sin embargo, los acontecimientos geopolíticos internacionales intensificaron la volatilidad del mercado, superando los escenarios base considerados.\n\nAnte este contexto, el Comité Técnico determinó el cierre de posiciones en pérdida con el objetivo de proteger el capital y evitar una ampliación del drawdown en un entorno de alta incertidumbre.'
+      },
+      {
+        title: '3. Medidas de Mitigación Aplicadas',
+        content: '',
+        items: [
+          'Cierre controlado de posiciones en pérdida en XAUUSD.',
+          'Activación del fondo de reserva conforme a los lineamientos internos aprobados.',
+          'Compensación del impacto generado por el evento adverso.',
+          'Reequilibrio del portafolio y ajuste táctico de exposición.'
+        ]
+      },
+      {
+        title: '4. Resultado del Periodo',
+        content: 'Gracias a la aplicación de las medidas de mitigación, el portafolio logró absorber el impacto del riesgo materializado, preservar la estabilidad operativa y cerrar el periodo en utilidades.'
       }
     ]
   }
