@@ -62,7 +62,7 @@ const ExecutionLogs: React.FC = () => {
   const markets = [
     { id: 'forex' as MarketCategory, name: 'Forex', icon: Globe },
     { id: 'stocks' as MarketCategory, name: 'Acciones', icon: Landmark },
-    { id: 'commodities' as MarketCategory, name: 'Comodities', icon: Coins },
+    { id: 'commodities' as MarketCategory, name: 'Commodities', icon: Coins },
   ];
 
   return (
@@ -173,7 +173,6 @@ const ExecutionLogs: React.FC = () => {
                 <th className="px-6 py-5 sticky left-0 bg-surface-subtle z-10">Ticket</th>
                 <th className="px-4 py-5">Símbolo</th>
                 <th className="px-4 py-5">Acción</th>
-                <th className="px-4 py-5 text-center">Lotes</th>
                 <th className="px-4 py-5">Apertura</th>
                 {activeTab === 'closed' && <th className="px-4 py-5">Cierre</th>}
                 <th className="px-4 py-5 text-right">Precio In</th>
@@ -196,7 +195,6 @@ const ExecutionLogs: React.FC = () => {
                       {ex.side}
                     </span>
                   </td>
-                  <td className="px-4 py-5 text-[11px] font-bold text-accent text-center">{ex.lots}</td>
                   <td className="px-4 py-5 text-[10px] font-medium text-text-secondary whitespace-nowrap">{ex.open_time}</td>
                   {activeTab === 'closed' && <td className="px-4 py-5 text-[10px] font-medium text-text-secondary whitespace-nowrap">{ex.close_time}</td>}
                   <td className="px-4 py-5 text-[11px] font-black text-accent text-right">{ex.open_price}</td>
@@ -246,8 +244,8 @@ const ExecutionLogs: React.FC = () => {
                   </div>
                 )}
                 <div>
-                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Lotes / S.L / T.P</p>
-                   <p className="text-xs font-black text-accent mt-0.5">Vol: {ex.lots} <span className="text-text-muted font-bold mx-1">|</span> {ex.sl} / {ex.tp}</p>
+                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">S.L / T.P</p>
+                   <p className="text-xs font-black text-accent mt-0.5">{ex.sl} / {ex.tp}</p>
                 </div>
                 <div>
                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Resultado</p>

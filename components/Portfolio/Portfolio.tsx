@@ -76,7 +76,7 @@ const Portfolio: React.FC = () => {
   const markets = [
     { id: 'forex' as MarketCategory, name: 'Forex', icon: Globe },
     { id: 'stocks' as MarketCategory, name: 'Acciones', icon: Landmark },
-    { id: 'commodities' as MarketCategory, name: 'Comodities', icon: Coins },
+    { id: 'commodities' as MarketCategory, name: 'Commodities', icon: Coins },
   ];
 
   return (
@@ -224,7 +224,6 @@ const Portfolio: React.FC = () => {
                     <th className="px-6 py-5 sticky left-0 bg-surface-subtle z-10">Ticket</th>
                     <th className="px-4 py-5">Símbolo</th>
                     <th className="px-4 py-5">Acción</th>
-                    <th className="px-4 py-5 text-center">Lotes</th>
                     <th className="px-4 py-5">Apertura</th>
                     {activeTab === 'closed' && <th className="px-4 py-5">Cierre</th>}
                     <th className="px-4 py-5 text-right">Precio In</th>
@@ -247,7 +246,6 @@ const Portfolio: React.FC = () => {
                           {ex.side}
                         </span>
                       </td>
-                      <td className="px-4 py-5 text-[11px] font-bold text-accent text-center">{ex.lots}</td>
                       <td className="px-4 py-5 text-[10px] font-medium text-text-secondary whitespace-nowrap">{ex.open_time}</td>
                       {activeTab === 'closed' && <td className="px-4 py-5 text-[10px] font-medium text-text-secondary whitespace-nowrap">{ex.close_time}</td>}
                       <td className="px-4 py-5 text-[11px] font-black text-accent text-right">{ex.open_price}</td>

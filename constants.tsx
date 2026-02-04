@@ -4,7 +4,6 @@ import { supabase } from './lib/supabase';
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
-  // URL del Web App de Google Apps Script proporcionada por el usuario
   SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4BAMWTO7_gogMAq1SzdvDJOAUg8tWA5G3dqpm7m4LBTwRdzDHVAY/exec',
   TAB_NAME: 'Hoja1'
 };
@@ -114,17 +113,17 @@ export const MOCK_USER: User = {
 
 export const MOCK_NOTICES: CorporateNotice[] = [
   {
-    id: 'n1',
-    title: 'Cierre de Periodo Diciembre',
-    date: 'Actual',
-    description: 'Se han dispersado exitosamente los dividendos del periodo final de 2025.',
+    id: 'n-jan26-payout',
+    title: 'Cierre de Periodo Enero 2026',
+    date: '22 Ene, 2026',
+    description: 'Se están dispersando los dividendos correspondientes al periodo de Enero 2026.',
     type: 'Success',
-    fullContent: 'La distribución ha sido completada y pagada proporcionalmente a todas las cuentas activas basada en el AUM.'
+    fullContent: 'El Área Administrativa informa que el proceso de dispersión de utilidades para el periodo de Enero 2026 ha iniciado satisfactoriamente. Los fondos están siendo procesados y se verán reflejados en los balances individuales conforme a los tiempos operativos bancarios.'
   }
 ];
 
 export const MOCK_ADMIN_NOTIFICATIONS: AdminNotification[] = [
-  { id: 'an-1', event: 'Transacción', description: 'Dispersión de dividendos Dic 2025: COMPLETADA', origin: 'Administrador', impact: 'Crítico', timestamp: 'Hoy, 10:45 AM', status: 'Confirmada' },
+  { id: 'an-1', event: 'Transacción', description: 'Dispersión de dividendos Ene 2026: INICIADA', origin: 'Administrador', impact: 'Crítico', timestamp: 'Hoy, 10:45 AM', status: 'Emitida' },
 ];
 
 export const MOCK_ASSETS: Asset[] = [
@@ -136,27 +135,60 @@ export const MOCK_ASSETS: Asset[] = [
 ];
 
 export const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 'tx1', type: 'Dividendo', amount: 2800.00, date: 'Hoy, 10:45 AM', status: 'Completado', description: 'Distribución Pagada Diciembre' },
+  { id: 'tx1', type: 'Dividendo', amount: 2800.00, date: 'Hoy, 10:45 AM', status: 'Pendiente', description: 'Distribución en Proceso Enero' },
 ];
 
 export const MOCK_REPORTS: Report[] = [
+  {
+    id: 'rep-strat-feb26',
+    title: 'Comunicado Administrativo: Actualización de Estrategia Operativa',
+    date: 'Feb 2026',
+    category: 'Estrategia',
+    summary: 'Actualización institucional sobre la transición hacia un portafolio global unificado para todos los accionistas.',
+    highlight: 'Transición a esquema unificado de capital, riesgo y rendimiento a partir de julio de 2026.',
+    sections: [
+      {
+        title: '1. Introducción institucional',
+        content: 'Como parte del proceso continuo de fortalecimiento del modelo operativo, optimización del capital colectivo y consolidación de la gestión de riesgo, el Comité Técnico, en conjunto con el Área Administrativa, ha aprobado una actualización estratégica en la estructura del portafolio.\n\nEsta decisión surge del análisis integral del desempeño histórico, los niveles de exposición por activo y las proyecciones del segundo semestre del año.'
+      },
+      {
+        title: '2. Cambio principal de condiciones operativas',
+        content: 'A partir del mes de julio (inicio del segundo semestre del año), todos los inversionistas pasarán a estar vinculados de forma integral al portafolio consolidado.\n\nEsto implica que ya no existirán participaciones segmentadas por sub-portafolios individuales; todos los accionistas participarán proporcionalmente en la totalidad de las operaciones, activos y resultados del portafolio global bajo un esquema unificado.'
+      },
+      {
+        title: '3. Justificación estratégica del cambio',
+        content: 'La unificación del portafolio permite implementar un modelo de gestión más robusto, con beneficios técnicos claros:\n\n- Mayor diversificación real del riesgo.\n- Optimización del capital colectivo bajo una sola matriz operativa.\n- Mejor distribución de utilidades y exposición.\n- Reducción de concentraciones por activo.\n- Fortalecimiento del fondo de reserva.'
+      },
+      {
+        title: '4. Beneficios directos para los accionistas',
+        content: 'Con esta actualización, los accionistas obtendrán:\n\n- Participación uniforme en todas las oportunidades del portafolio.\n- Acceso automático a nuevas estrategias.\n- Mayor protección del capital mediante diversificación estructural.\n- Simplificación operativa y contable.\n- Transparencia consolidada en los reportes financieros.'
+      },
+      {
+        title: '5. Fecha de entrada en vigor',
+        content: 'Esta actualización estratégica regirá oficialmente a partir del mes de julio de 2026 y se aplicará de forma automática a todos los accionistas activos. No se requiere ninguna acción adicional por parte de los inversionistas.'
+      },
+      {
+        title: '6. Mensaje institucional de cierre',
+        content: 'Esta medida busca fortalecer el ecosistema de inversión, priorizando la protección del capital colectivo sobre resultados aislados. Reafirmamos nuestro compromiso con una gestión profesional, estructurada y transparente.\n\nNo es mejor gestor quien persigue el mayor rendimiento puntual, sino quien protege el capital colectivo mediante decisiones sostenibles.'
+      }
+    ]
+  },
   { 
-    id: 'rep-risk-jan26', 
+    id: 'rep-risk-jan26-detailed', 
     title: 'Reporte de Riesgo y Mitigación – Enero 2026', 
     date: '22 Ene, 2026', 
     category: 'Riesgos y Mitigación', 
-    summary: 'Actualización institucional sobre exposición en activos refugio, evaluación de riesgo y medidas de mitigación aplicadas.',
-    highlight: 'Estado general de riesgos: Controlado, bajo vigilancia activa del Comité Técnico.',
+    summary: 'Actualización sobre exposición en XAUUSD y medidas de mitigación aplicadas durante el periodo.',
+    highlight: 'Riesgo de mercado materializado, gestionado mediante mecanismos internos.',
     sections: [
       {
-        title: '1. Resumen Ejecutivo',
-        content: 'En cumplimiento de sus funciones de supervisión y control, el Área Administrativa de Gestión de Riesgo, en conjunto con el Comité Técnico, informa que el portafolio mantiene un perfil de riesgo controlado.'
+        title: 'Resumen Ejecutivo',
+        content: 'Se informa la materialización de un escenario de riesgo de mercado en el activo XAUUSD derivado de volatilidad geopolítica, gestionado exitosamente mediante el fondo de reserva.'
       }
     ]
   }
 ];
 
-// Publish a notification to local storage for global access
 export const adminPublishNotification = (notification: AdminNotification) => {
   const published = JSON.parse(localStorage.getItem('PUBLISHED_NOTIFICATIONS') || '[]');
   if (!published.find((n: any) => n.id === notification.id)) {
@@ -165,7 +197,6 @@ export const adminPublishNotification = (notification: AdminNotification) => {
   }
 };
 
-// Retrieve all published notifications from local storage
 export const getPublishedNotifications = (): AdminNotification[] => {
   try {
     const saved = localStorage.getItem('PUBLISHED_NOTIFICATIONS');

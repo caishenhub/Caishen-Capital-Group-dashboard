@@ -230,7 +230,7 @@ const ExecutiveSummary: React.FC = () => {
                 <div className="flex -space-x-3 overflow-hidden">
                   {/* Avatar Izquierdo: Caishen Logo con borde Verde */}
                   <img 
-                    src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDI-AZUL-1.png" 
+                    src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" 
                     className="size-11 rounded-full border-2 border-primary bg-white object-cover shadow-sm" 
                     alt="Caishen Capital Group Logo" 
                   />
@@ -368,17 +368,17 @@ const ExecutiveSummary: React.FC = () => {
         <div className="bg-rose-50/30 rounded-[32px] p-8 border border-rose-100/50 space-y-6">
           <div className="flex items-center gap-2">
             <Bell size={18} className="text-rose-500" />
-            <h3 className="text-rose-900 text-sm font-black uppercase tracking-widest">Avisos Corporativos (1)</h3>
+            <h3 className="text-rose-900 text-sm font-black uppercase tracking-widest">Avisos Corporativos ({MOCK_NOTICES.length})</h3>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm relative group cursor-pointer" onClick={() => setSelectedNotice(MOCK_NOTICES[0])}>
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-2">
                 <div className="size-2 bg-green-500 rounded-full animate-pulse"></div>
-                <h4 className="text-accent text-xs font-black">Cierre de Periodo Diciembre</h4>
+                <h4 className="text-accent text-xs font-black">{MOCK_NOTICES[0].title}</h4>
               </div>
               <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest border-b border-rose-200">Ver Detalles</span>
             </div>
-            <p className="text-text-secondary text-[10px] font-medium leading-relaxed">Rendimiento anual consolidado del 41,77% procesado correctamente.</p>
+            <p className="text-text-secondary text-[10px] font-medium leading-relaxed">{MOCK_NOTICES[0].description}</p>
           </div>
         </div>
 
