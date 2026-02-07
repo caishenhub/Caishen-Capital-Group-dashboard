@@ -4,8 +4,9 @@ import { supabase } from './lib/supabase';
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
-  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4BAMWTO7_gogMAq1SzdvDJOAUg8tWA5G3dqpm7m4LBTwRdzDHVAY/exec',
-  TAB_NAME: 'Hoja1'
+  // URL REAL proporcionada por el usuario para la sincronización maestra
+  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycby-h02XetymxvLD9RMvO2E2TH7IxE_mMMtLw9eRTptHiUAgMFLh2DMwS0K9pbYp_qXyBw/exec',
+  TAB_NAME: 'CONFIG_MAESTRA'
 };
 
 // --- SISTEMA DE PERSISTENCIA SEGMENTADA ---
@@ -39,39 +40,28 @@ export const FINANCIAL_HISTORY: Record<number, number[]> = {
   2023: [3.40, 2.85, -2.10, 4.25, 3.90, 2.75, -1.65, 5.60, -2.95, 4.80, 2.10, 1.85],
   2024: [3.10, 2.45, -1.80, 4.60, 5.20, 3.85, -2.30, 6.40, 2.90, 4.15, 1.75, 1.95],
   2025: [3.50, 2.10, 3.80, 2.45, 3.15, 2.90, 2.75, 3.20, 2.85, 3.10, 2.95, 2.68],
-  2026: [2.10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] // Actualizado Enero al 2.10% solicitado
+  2026: [2.10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
 };
 
-// El valor nominal se fija en $248.85 para que 20 acciones equivalgan a $4,977.00
-const NOMINAL_VALUE_PER_SHARE = 248.85; 
-const TOTAL_SHARES = 500;
-const GLOBAL_AUM = TOTAL_SHARES * NOMINAL_VALUE_PER_SHARE;
-
+// Valores base iniciales (Serán sobreescritos por la carga dinámica en los componentes)
 export const FINANCE_CONFIG = {
-  TOTAL_SHARES,
-  GLOBAL_AUM,
-  NOMINAL_VALUE_PER_SHARE,
+  TOTAL_SHARES: 500,
+  GLOBAL_AUM: 124425, // 500 * 248.85
+  NOMINAL_VALUE_PER_SHARE: 248.85,
   RESERVE_GOAL_PCT: 100
 };
 
-/**
- * Nueva lógica de cálculo: Capital Fijo + Sumatoria de Utilidades Mensuales
- */
 export const calculateUserFinance = (shares: number, year: number = 2026, joinMonth: number = 0) => {
   const participation = shares / FINANCE_CONFIG.TOTAL_SHARES;
-  
-  // Capital Fijo: Siempre se mantiene el capital inicial basado en el valor nominal
   const fixedBalance = shares * FINANCE_CONFIG.NOMINAL_VALUE_PER_SHARE;
 
   const history = FINANCIAL_HISTORY[year] || [];
   let annualYieldSum = 0;
   let annualProfitSum = 0;
 
-  // Calculamos la sumatoria de rendimientos y utilidades (Liquidación mensual)
   history.forEach((_, idx) => {
     if (idx >= joinMonth) {
       const mYield = getStoredYield(year, idx);
-      // Solo sumamos si el mes ha sido pagado o tiene rendimiento asignado
       if (mYield !== 0 || localStorage.getItem(`YIELD_${year}_${idx}`) !== null) {
         annualYieldSum += mYield;
         annualProfitSum += (fixedBalance * mYield);

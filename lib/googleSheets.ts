@@ -27,124 +27,145 @@ export interface ExecutionData {
 
 export type MarketCategory = 'forex' | 'stocks' | 'commodities';
 
-// Endpoint específico para Commodities proporcionado por el usuario
+const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4BAMWTO7_gogMAq1SzdvDJOAUg8tWA5G3dqpm7m4LBTwRdzDHVAY/exec'; 
 const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7yRPTdP84d1QGxsQejGF2dQj5M9VFSSZBiDsSwsMsNRIGUjY5wXFgJDOjMQ/exec';
+const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
 
 /**
- * Normalización robusta para llaves de columnas
+ * Normaliza un string para comparaciones robustas
  */
 const norm = (str: any): string => 
   String(str || '')
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Quita tildes
-    .replace(/[^a-z0-9]/g, '');    // Quita espacios y caracteres especiales
+    .replace(/[\u0300-\u036f]/g, "") 
+    .replace(/[^a-z0-9]/g, '');
 
 /**
- * Normalizador de fechas para formato humano: DD/MM/YYYY HH:mm
+ * Busca un valor en un objeto basándose en una lista de llaves posibles,
+ * ignorando mayúsculas, espacios y caracteres especiales.
  */
-const formatDateTime = (dateStr: any): string => {
-  if (!dateStr || dateStr === '---' || dateStr === 'PENDIENTE') return dateStr;
-  
+export function findValue(obj: any, keys: string[]): any {
+  if (!obj) return null;
+  const normalizedKeys = keys.map(norm);
+  const actualKey = Object.keys(obj).find(k => normalizedKeys.includes(norm(k)));
+  return actualKey ? obj[actualKey] : null;
+}
+
+export async function fetchTableData(tabName: string): Promise<any[]> {
   try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return String(dateStr);
-
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
-  } catch (e) {
-    return String(dateStr);
-  }
-};
-
-/**
- * Función auxiliar para obtener datos de una pestaña específica con soporte para URL dinámica
- */
-async function fetchSheetTab(sheetName: string, overrideUrl?: string): Promise<any[]> {
-  try {
-    const baseUrl = overrideUrl || GOOGLE_CONFIG.SCRIPT_API_URL;
-    const url = `${baseUrl}?sheet=${sheetName}&tab=${sheetName}&t=${Date.now()}`;
-    const response = await fetch(url);
+    const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&t=${Date.now()}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    
     if (!response.ok) return [];
     
     const json = await response.json();
-    
-    // El script de Commodities puede devolver un array directo o un objeto con .rows
-    if (json.rows && Array.isArray(json.rows)) return json.rows;
-    if (Array.isArray(json)) return json;
-
-    return [];
+    return Array.isArray(json) ? json : (json.rows || []);
   } catch (e) {
-    console.warn(`Error al obtener la hoja ${sheetName}:`, e);
+    console.error(`Error crítico al obtener tabla ${tabName}:`, e);
     return [];
   }
+}
+
+export async function updateTableData(tabName: string, data: any): Promise<{success: boolean, message: string}> {
+  try {
+    const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&action=update`;
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return { success: true, message: "Datos enviados a la cola de sincronización." };
+  } catch (e) {
+    return { success: false, message: "Error de conexión." };
+  }
+}
+
+export async function fetchPerformanceHistory(): Promise<any[]> {
+  const raw = await fetchTableData('HISTORIAL_RENDIMIENTOS');
+  if (!raw || raw.length === 0) return [];
+
+  const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  const sorted = raw.sort((a, b) => {
+    const yearA = parseInt(findValue(a, ['ANIO', 'year']));
+    const yearB = parseInt(findValue(b, ['ANIO', 'year']));
+    if (yearA !== yearB) return yearA - yearB;
+    return parseInt(findValue(a, ['MES', 'month'])) - parseInt(findValue(b, ['MES', 'month']));
+  });
+
+  let currentPortfolio = 1000;
+  let currentBenchmark = 1000;
+
+  return sorted.map(item => {
+    const pYield = parseFloat(String(findValue(item, ['RENDIMIENTO_FONDO', 'pYield']) || 0).replace(',', '.'));
+    const bYield = parseFloat(String(findValue(item, ['RENDIMIENTO_SP500', 'bYield']) || 0).replace(',', '.'));
+    currentPortfolio *= (1 + pYield);
+    currentBenchmark *= (1 + bYield);
+    const mes = parseInt(findValue(item, ['MES', 'month']));
+
+    return {
+      name: monthNames[mes - 1],
+      year: String(findValue(item, ['ANIO', 'year'])),
+      pYield: (pYield * 100).toFixed(2),
+      bYield: (bYield * 100).toFixed(2),
+      portfolio: parseFloat(currentPortfolio.toFixed(2)),
+      benchmark: parseFloat(currentBenchmark.toFixed(2))
+    };
+  });
 }
 
 export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex'): Promise<ExecutionData> => {
   try {
     let openTab = 'HISTORY_OPEN';
     let closedTab = 'HISTORY_CLOSED';
-    let targetUrl = GOOGLE_CONFIG.SCRIPT_API_URL;
+    let targetUrl = FOREX_API_URL;
 
-    if (category === 'stocks') {
+    if (category === 'commodities') targetUrl = COMMODITIES_API_URL;
+    else if (category === 'stocks') {
+      targetUrl = STOCKS_API_URL;
       openTab = 'STOCKS_OPEN';
       closedTab = 'STOCKS_CLOSED';
-    } else if (category === 'commodities') {
-      // Para Commodities usamos el endpoint dedicado y las pestañas estándar del historial
-      openTab = 'HISTORY_OPEN'; 
-      closedTab = 'HISTORY_CLOSED';
-      targetUrl = COMMODITIES_API_URL;
     }
 
-    const [rawOpen, rawClosed] = await Promise.all([
-      fetchSheetTab(openTab, targetUrl),
-      fetchSheetTab(closedTab, targetUrl)
-    ]);
+    const fetchFunc = async (tab: string) => {
+      const url = `${targetUrl}?tab=${tab}&t=${Date.now()}`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const j = await res.json();
+      return Array.isArray(j) ? j : (j.rows || []);
+    };
+
+    const [rawOpen, rawClosed] = await Promise.all([fetchFunc(openTab), fetchFunc(closedTab)]);
 
     const mapRecord = (item: any, isTradeOpen: boolean): Execution => {
-      const get = (keys: string[]) => {
-        const normalizedTargetKeys = keys.map(norm);
-        const actualKey = Object.keys(item).find(k => normalizedTargetKeys.includes(norm(k)));
-        return actualKey ? item[actualKey] : null;
-      };
-
-      const fmt = (v: any) => {
+      const fmtNum = (v: any) => {
         if (v === undefined || v === null || v === '') return '0,00';
         if (typeof v === 'number') return v.toLocaleString('es-ES', { minimumFractionDigits: 2 });
-        const clean = String(v).replace(/[^\d,.-]/g, '');
-        return clean || '0,00';
-      };
-
-      const parseProfit = (v: any): number => {
-        if (typeof v === 'number') return v;
-        const s = String(v || '0')
-          .replace(/[^\d,.+-]/g, '')
-          .replace(/\./g, '')
-          .replace(',', '.');
-        return parseFloat(s) || 0;
+        const n = parseFloat(String(v).replace(',', '.').replace(/[^0-9.-]/g, ''));
+        return isNaN(n) ? String(v) : n.toLocaleString('es-ES', { minimumFractionDigits: 2 });
       };
 
       return {
-        ticket: String(get(['ticket', 'id', 'orden', 'order', 'ticketid']) || '0'),
-        symbol: String(get(['symbol', 'simbolo', 'asset', 'item', 'instrumento', 'instrument']) || '---'),
-        side: String(get(['accion', 'action', 'side', 'type', 'tipo', 'direccion']) || '---'),
-        lots: fmt(get(['lotes', 'lots', 'volume', 'volumen', 'size'])),
-        open_time: formatDateTime(get(['fechadeapertura', 'open_date', 'opentime', 'fecha', 'open_time', 'apertura'])),
-        close_time: isTradeOpen ? 'PENDIENTE' : formatDateTime(get(['fechadecierre', 'close_date', 'closetime', 'cierre', 'close_time'])),
-        open_price: fmt(get(['preciodeapertura', 'open_price', 'precioapertura', 'open'])),
-        close_price: isTradeOpen ? '---' : fmt(get(['preciodecierre', 'close_price', 'preciocierre', 'close'])),
-        sl: fmt(get(['slprecio', 'stoploss', 'sl', 's/l', 'stop_loss'])),
-        tp: fmt(get(['tpprecio', 'takeprofit', 'tp', 't/p', 'take_profit'])),
-        profit: parseProfit(get(['beneficioneto', 'profit', 'beneficio', 'p/l', 'resultado'])),
-        gain: fmt(get(['ganancia', 'gain', 'profit_gross', 'resultado_bruto'])),
-        swap: fmt(get(['swap', 'interes', 'swaps'])),
-        commission: fmt(get(['commission', 'comision', 'comisiones', 'comm'])),
-        comment: String(get(['comment', 'comentario', 'nota', 'pips', 'duracion']) || ''),
+        ticket: String(findValue(item, ['ticket', 'id', 'orden', 'posicion']) || '0'),
+        symbol: String(findValue(item, ['symbol', 'simbolo', 'asset', 'instrument']) || '---'),
+        side: String(findValue(item, ['accion', 'side', 'type', 'tipo']) || '---'),
+        lots: fmtNum(findValue(item, ['lotes', 'lots', 'volume', 'size'])),
+        open_time: String(findValue(item, ['fechadeapertura', 'open_date', 'opentime']) || ''),
+        close_time: isTradeOpen ? 'PENDIENTE' : String(findValue(item, ['fechadecierre', 'close_date', 'closetime']) || ''),
+        open_price: fmtNum(findValue(item, ['preciodeapertura', 'open_price', 'priceopen'])),
+        close_price: isTradeOpen ? '---' : fmtNum(findValue(item, ['preciodecierre', 'close_price', 'priceclose'])),
+        sl: fmtNum(findValue(item, ['slprecio', 'stoploss', 'sl'])),
+        tp: fmtNum(findValue(item, ['tpprecio', 'takeprofit', 'tp'])),
+        profit: parseFloat(String(findValue(item, ['beneficioneto', 'profit', 'resultado']) || 0).replace(',', '.')) || 0,
+        gain: fmtNum(findValue(item, ['ganancia', 'gain', 'pct'])),
+        swap: fmtNum(findValue(item, ['swap', 'interes'])),
+        commission: fmtNum(findValue(item, ['commission', 'comision', 'fee'])),
+        comment: String(findValue(item, ['comment', 'comentario']) || ''),
         isOpen: isTradeOpen
       };
     };
@@ -153,9 +174,7 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
       closed: rawClosed.map(item => mapRecord(item, false)),
       open: rawOpen.map(item => mapRecord(item, true))
     };
-
   } catch (error) {
-    console.error('Error crítico en sincronización de datos:', error);
-    throw error;
+    return { closed: [], open: [] };
   }
 };

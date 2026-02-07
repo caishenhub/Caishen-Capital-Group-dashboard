@@ -1,13 +1,50 @@
 
-import React, { useState, useMemo } from 'react';
-import { Wallet, PiggyBank, ShieldCheck, Activity, Target, ArrowUpRight, Bitcoin, TrendingUp, Calendar, Repeat, BarChart3, Globe, Coins } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Wallet, PiggyBank, ShieldCheck, Activity, Target, ArrowUpRight, Bitcoin, TrendingUp, Calendar, Repeat, BarChart3, Globe, Coins, RefreshCw } from 'lucide-react';
 import StatCard from './StatCard';
 import PerformanceChart from './Charts/PerformanceChart';
 import AllocationPieChart from './Charts/AllocationPieChart';
 import { FINANCE_CONFIG, FINANCIAL_HISTORY, getStoredYield } from '../constants';
+import { fetchTableData, findValue } from '../lib/googleSheets';
 
 const Dashboard: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'General' | number>('General');
+  const [fullConfig, setFullConfig] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadConfigs = async () => {
+    setIsLoading(true);
+    try {
+      // Cargamos toda la tabla, no solo la primera fila
+      const data = await fetchTableData('CONFIG_MAESTRA');
+      setFullConfig(data || []);
+    } catch (e) {
+      console.error("Error cargando configuraciones:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConfigs();
+  }, []);
+
+  // Identificar la fila de configuración activa basada en el periodo seleccionado
+  const activeConfig = useMemo(() => {
+    if (!fullConfig.length) return null;
+    
+    if (selectedPeriod === 'General') {
+      return fullConfig[0]; // Por defecto la primera fila es la general
+    }
+
+    // Buscar una fila que coincida con el año seleccionado
+    const yearRow = fullConfig.find(row => {
+      const rowYear = parseInt(findValue(row, ['ANIO', 'year', 'periodo']));
+      return rowYear === selectedPeriod;
+    });
+
+    return yearRow || fullConfig[0];
+  }, [selectedPeriod, fullConfig]);
 
   const currentDate = new Intl.DateTimeFormat('es-ES', { 
     day: 'numeric', 
@@ -15,10 +52,14 @@ const Dashboard: React.FC = () => {
     year: 'numeric' 
   }).format(new Date());
 
+  // Extracción robusta de valores usando la fila activa (del año o general)
+  const liveAUM = parseFloat(String(findValue(activeConfig, ['AUM_TOTAL_FONDO', 'aum', 'total_aum']) || FINANCE_CONFIG.GLOBAL_AUM).replace(',', '.'));
+  const liveShareValue = parseFloat(String(findValue(activeConfig, ['VALOR_NOMINAL_ACCION', 'nominal_value', 'precio_accion']) || FINANCE_CONFIG.NOMINAL_VALUE_PER_SHARE).replace(',', '.'));
+  const liveTotalShares = parseInt(findValue(activeConfig, ['TOTAL_ACCIONES_FONDO', 'total_shares', 'acciones']) || FINANCE_CONFIG.TOTAL_SHARES);
+
   const metrics = useMemo(() => {
     const years = [2022, 2023, 2024, 2025, 2026];
-    // Fixed: Property name corrected from BASE_VALUE_PER_SHARE to NOMINAL_VALUE_PER_SHARE
-    let currentBalance = FINANCE_CONFIG.NOMINAL_VALUE_PER_SHARE * FINANCE_CONFIG.TOTAL_SHARES;
+    let currentBalance = liveShareValue * liveTotalShares;
     const yearlyBalances: Record<number, number> = {};
     const yearlyCompoundYields: Record<number, number> = {};
 
@@ -36,10 +77,10 @@ const Dashboard: React.FC = () => {
 
     let periodProfit = 0;
     let periodGrowth = 0;
-    let displayAUM = FINANCE_CONFIG.GLOBAL_AUM;
+    let displayAUM = liveAUM;
 
     if (selectedPeriod === 'General') {
-      displayAUM = FINANCE_CONFIG.GLOBAL_AUM;
+      displayAUM = liveAUM;
       const totalFactor = Object.keys(yearlyCompoundYields).reduce((acc, year) => {
         const history = FINANCIAL_HISTORY[parseInt(year)] || [];
         let factor = 1;
@@ -56,13 +97,24 @@ const Dashboard: React.FC = () => {
     }
 
     return { aum: displayAUM, profit: periodProfit, growth: periodGrowth };
-  }, [selectedPeriod]);
+  }, [selectedPeriod, liveAUM, liveShareValue, liveTotalShares]);
 
+  /**
+   * LÓGICA DE FONDO DE RESERVA FINAL
+   * Prioridad 1: Valor en la fila del año seleccionado (Columna META_FONDO_RESERVA_PCT)
+   * Prioridad 2: Valor en la fila general (Columna META_FONDO_RESERVA_PCT)
+   * Prioridad 3: Valor por defecto del sistema (100)
+   */
   const reserveValue = useMemo(() => {
-    if (selectedPeriod === 2022) return 94.25;
-    if (selectedPeriod === 2026) return 94.68;
+    const rawVal = findValue(activeConfig, ['META_FONDO_RESERVA_PCT', 'fondo_reserva', 'reserva_pct']);
+    const sheetValue = parseFloat(String(rawVal).replace(',', '.'));
+    
+    // Si el valor es un número válido en el Sheet, se muestra tal cual (sin importar el año)
+    if (!isNaN(sheetValue)) return sheetValue;
+
+    // Fallback de seguridad si el Excel está vacío
     return FINANCE_CONFIG.RESERVE_GOAL_PCT;
-  }, [selectedPeriod]);
+  }, [activeConfig]);
 
   const transactions = [
     { id: 'tx1', type: 'dividend', amount: 31450.20, date: '05 Ene, 2026', desc: 'DISPERSIÓN DIVIDENDOS (41.77%)', status: 'Finalizado' },
@@ -88,9 +140,18 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 max-w-full overflow-x-hidden">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-accent text-2xl md:text-4xl font-black tracking-tighter uppercase leading-tight mb-1">Panel de Control</h1>
-          <p className="text-text-secondary text-[11px] md:text-base font-medium">Estado consolidado al {currentDate}.</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-accent text-2xl md:text-4xl font-black tracking-tighter uppercase leading-tight mb-1">Panel de Control</h1>
+            <p className="text-text-secondary text-[11px] md:text-base font-medium">Estado consolidado al {currentDate}.</p>
+          </div>
+          <button 
+            onClick={loadConfigs}
+            className={`p-2 bg-white border border-surface-border rounded-xl text-accent hover:bg-surface-subtle transition-all ${isLoading ? 'opacity-50' : ''}`}
+            title="Sincronizar con Google Sheets"
+          >
+            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+          </button>
         </div>
 
         <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar max-w-full">
@@ -128,7 +189,7 @@ const Dashboard: React.FC = () => {
         />
         <StatCard 
           title="FONDO DE RESERVA" value={`${reserveValue}%`} progress={reserveValue} icon={ShieldCheck} variant="light"
-          changeLabel={(selectedPeriod === 2022 || selectedPeriod === 2026) ? "Soporte de Pérdidas Activo" : "Cobertura Total Garantizada"}
+          changeLabel={reserveValue < 100 ? "Soporte de Pérdidas Activo" : "Cobertura Total Garantizada"}
         />
       </div>
 
@@ -169,73 +230,6 @@ const Dashboard: React.FC = () => {
                   <span className="text-[9px] font-bold text-text-secondary">{item.label}</span>
                 </div>
                 <span className="text-[9px] font-black text-accent">{item.val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
-        <div className="bg-white rounded-[24px] border border-surface-border shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 flex justify-between items-center border-b border-gray-50 bg-surface-subtle/30">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-white rounded-lg shadow-sm"><BarChart3 size={14} className="text-accent" /></div>
-              <h3 className="text-accent text-xs font-black tracking-tight uppercase">Transacciones</h3>
-            </div>
-          </div>
-          <div className="flex-1 divide-y divide-gray-50 overflow-x-auto hide-scrollbar">
-            {transactions.map((tx) => {
-              const style = getTxStyles(tx.type);
-              return (
-                <div key={tx.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors group min-w-[280px]">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={`p-2 rounded-xl ${style.bg} ${style.text} shrink-0 shadow-sm`}>
-                      {style.icon}
-                    </div>
-                    <div className="truncate">
-                      <p className="text-[10px] font-black text-accent truncate uppercase">{tx.desc}</p>
-                      <p className="text-[8px] font-bold text-text-muted flex items-center gap-1">
-                        <Calendar size={10} /> {tx.date}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0 ml-4">
-                    <p className={`text-xs font-black ${tx.amount > 0 ? 'text-accent' : 'text-text-muted'}`}>
-                      {tx.amount > 0 ? `$${tx.amount.toLocaleString('en-US')}` : '--'}
-                    </p>
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-tighter">USD</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[24px] border border-surface-border shadow-sm p-5 flex flex-col">
-          <div className="flex justify-between items-center mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-accent rounded-lg shadow-sm text-primary"><Globe size={14} /></div>
-              <h3 className="text-accent text-xs font-black tracking-tight uppercase">Mercado</h3>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {marketWatch.map((item) => (
-              <div key={item.id} className="p-3 rounded-xl border border-gray-100 flex items-center justify-between transition-all group cursor-default">
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-lg flex items-center justify-center text-white shadow-sm shrink-0" style={{ backgroundColor: item.color }}>
-                    {item.symbol === 'BTC' ? <Bitcoin size={16} /> : item.symbol === 'SPX' ? <TrendingUp size={16} /> : <Coins size={16} />}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-accent leading-none">{item.name}</p>
-                    <p className="text-[8px] font-bold text-text-muted uppercase mt-1">{item.symbol}</p>
-                  </div>
-                </div>
-                <div className="text-right min-w-[70px]">
-                  <p className="text-[10px] font-black text-accent leading-none">{item.price}</p>
-                  <span className={`text-[8px] font-black px-1 py-0.5 rounded-md mt-1 inline-block ${item.pos ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                    {item.change}
-                  </span>
-                </div>
               </div>
             ))}
           </div>
