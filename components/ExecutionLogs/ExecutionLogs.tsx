@@ -42,6 +42,9 @@ const ExecutionLogs: React.FC = () => {
 
   useEffect(() => {
     syncData(activeMarket);
+    // Auto-sync cada 3 minutos para el libro de ejecuciones
+    const interval = setInterval(() => syncData(activeMarket), 180000);
+    return () => clearInterval(interval);
   }, [activeMarket]);
 
   const filteredData = useMemo(() => {
@@ -69,24 +72,28 @@ const ExecutionLogs: React.FC = () => {
     <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-700">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-4 mb-2">
             <div className="p-2 bg-accent rounded-xl text-primary shadow-lg">
               <Database size={24} />
             </div>
             <h1 className="text-accent text-2xl md:text-4xl font-black tracking-tighter uppercase leading-tight">Libro de Ejecuciones</h1>
+            
+            {/* BADGE LIVE MINIMALISTA */}
+            <button 
+              onClick={() => syncData(activeMarket)}
+              disabled={isLoading}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 group"
+            >
+              <div className="relative flex size-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${!isLoading ? 'duration-1000' : 'duration-300'}`}></span>
+                <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
+              </div>
+              <span className="text-[9px] font-black text-accent uppercase tracking-widest">
+                {isLoading ? 'Sincronizando...' : 'Live Ledger'}
+              </span>
+            </button>
           </div>
           <p className="text-text-secondary text-xs md:text-sm font-medium">Auditoría detallada de transacciones financieras en tiempo real.</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => syncData(activeMarket)}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-accent text-white hover:bg-accent/90 rounded-2xl transition-all shadow-xl disabled:opacity-50 group"
-          >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Sincronizar Datos</span>
-          </button>
         </div>
       </header>
 

@@ -7,17 +7,14 @@ import {
   PieChart as PieIcon, 
   DollarSign, 
   Target,
-  Calendar,
-  Layers,
   Award,
-  ArrowUpRight,
-  Clock,
   CheckCircle2,
   RefreshCw,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
-import { fetchTableData } from '../../lib/googleSheets';
+import { fetchTableData, findValue, norm, parseSheetNumber } from '../../lib/googleSheets';
 
 interface ShareholderProfileProps {
   user: any;
@@ -25,7 +22,7 @@ interface ShareholderProfileProps {
 }
 
 const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack }) => {
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [dividends, setDividends] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [config, setConfig] = useState<any>(null);
@@ -38,14 +35,15 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         fetchTableData('CONFIG_MAESTRA')
       ]);
       
+      // Búsqueda normalizada del socio en la nube para asegurar vinculación
+      const targetUidNorm = norm(user.uid);
       const userDividends = allDividends.filter(d => {
-        const rowUid = String(d.UID_SOCIO || d.uid || d.Uid || '').trim().toLowerCase();
-        const targetUid = String(user.uid).trim().toLowerCase();
-        return rowUid === targetUid;
+        const rowUid = findValue(d, ['UID_SOCIO', 'uid', 'id_socio', 'id', 'socio']);
+        return norm(rowUid) === targetUidNorm;
       });
       
       setDividends(userDividends);
-      setConfig(masterConfig[0]);
+      setConfig(masterConfig[0] || {});
     } catch (e) {
       console.error("Error cargando perfil dinámico:", e);
     } finally {
@@ -58,35 +56,32 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
   }, [user.uid]);
 
   const stats = useMemo(() => {
-    const yearDividends = dividends.filter(d => parseInt(d.ANIO || d.anio || d.Anio) === selectedYear);
+    const yearDividends = dividends.filter(d => {
+      const rowYear = parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0));
+      return rowYear === selectedYear;
+    });
     
     const totalProfit = yearDividends.reduce((acc, d) => {
-      const val = parseFloat(String(d.UTILIDAD_NETA_USD || d.utility || 0).replace(',', '.'));
-      return acc + (isNaN(val) ? 0 : val);
+      return acc + parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD', 'utility', 'net_profit', 'utilidad']));
     }, 0);
 
     const totalYield = yearDividends.reduce((acc, d) => {
-      const val = parseFloat(String(d.RENTABILIDAD_MES_PCT || d.yield || 0).replace(',', '.'));
-      return acc + (isNaN(val) ? 0 : val);
+      return acc + parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'yield', 'monthly_return', 'rentabilidad']));
     }, 0);
     
-    const nominalValue = parseFloat(String(config?.VALOR_NOMINAL_ACCION || 248.85).replace(',', '.'));
+    const nominalValue = parseSheetNumber(findValue(config, ['VALOR_NOMINAL_ACCION', 'nominal_value', 'precio_accion'])) || 248.85;
     const balance = user.shares * nominalValue;
+    const totalSharesFund = parseSheetNumber(findValue(config, ['TOTAL_ACCIONES_FONDO', 'total_shares'])) || 500;
 
     return {
       balance,
       totalProfit,
       totalYield,
-      participation: ((user.shares / (parseInt(config?.TOTAL_ACCIONES_FONDO) || 500)) * 100).toFixed(2)
+      participation: ((user.shares / (totalSharesFund || 1)) * 100).toFixed(2)
     };
   }, [dividends, selectedYear, config, user.shares]);
 
   const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
-  const formatYield = (val: number) => {
-    const pct = (val * 100).toFixed(2);
-    return val >= 0 ? `+${pct}%` : `${pct}%`;
-  };
 
   return (
     <div className="bg-[#fcfcfc] min-h-full animate-in fade-in slide-in-from-right-4 duration-500 pb-20 overflow-y-auto">
@@ -123,7 +118,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   <span className="px-3 py-1 bg-primary/10 text-accent text-[10px] font-black rounded-lg uppercase tracking-widest border border-primary/20">
                     {user.uid}
                   </span>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Socio Auditado</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Identidad Certificada</span>
                 </div>
               </div>
             </div>
@@ -146,27 +141,27 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               <RefreshCw size={24} className="absolute inset-0 m-auto text-primary animate-pulse" />
             </div>
             <div className="text-center space-y-1">
-              <p className="text-xs font-black text-accent uppercase tracking-[0.3em]">Sincronizando Libro de Liquidaciones</p>
-              <p className="text-[10px] font-bold text-text-muted uppercase">Conectando con base de datos maestra...</p>
+              <p className="text-xs font-black text-accent uppercase tracking-[0.3em]">Sincronizando Libro en la Nube</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase">Validando registros de dispersión...</p>
             </div>
           </div>
         ) : (
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { label: 'Acciones', value: user.shares.toString(), sub: 'Padrón Oficial', icon: Target, variant: 'neutral' },
-                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Global', icon: PieIcon, variant: 'neutral' },
+                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target, variant: 'neutral' },
+                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon, variant: 'neutral' },
                 { 
                   label: `Rendimiento ${selectedYear}`, 
-                  value: formatYield(stats.totalYield), 
-                  sub: 'Acumulado Anual', 
+                  value: (stats.totalYield * 100).toFixed(2) + '%', 
+                  sub: 'Retorno Acumulado', 
                   icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown,
                   variant: stats.totalYield >= 0 ? 'positive' : 'negative'
                 },
                 { 
                   label: 'Utilidad Neta', 
                   value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 
-                  sub: 'Dispersado en Cuenta', 
+                  sub: 'Liquidado en Nube', 
                   icon: DollarSign,
                   variant: stats.totalProfit >= 0 ? 'positive' : 'negative'
                 },
@@ -194,12 +189,12 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-accent rounded-xl text-primary shadow-lg"><FileSpreadsheet size={20}/></div>
                   <div>
-                    <h2 className="text-xl font-black text-accent tracking-tight uppercase">Liquidaciones Registradas</h2>
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-1">Auditoría Individual de Retornos</p>
+                    <h2 className="text-xl font-black text-accent tracking-tight uppercase">Historial de Retornos en Nube</h2>
+                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-1">Sincronización de Liquidaciones por Período</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar max-w-full">
-                  {[2022, 2023, 2024, 2025, 2026].map(year => (
+                  {[2023, 2024, 2025, 2026].map(year => (
                     <button
                       key={year}
                       onClick={() => setSelectedYear(year)}
@@ -215,7 +210,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-surface-subtle/20 text-[10px] font-black text-text-muted uppercase tracking-widest border-b border-surface-border">
-                      <th className="px-8 py-5">Mes Operativo</th>
+                      <th className="px-8 py-5">Mes de Operación</th>
                       <th className="px-8 py-5 text-right">Rentabilidad</th>
                       <th className="px-8 py-5 text-right">Utilidad Neta (USD)</th>
                       <th className="px-8 py-5 text-center">Estatus</th>
@@ -223,29 +218,31 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {dividends
-                      .filter(d => parseInt(d.ANIO || d.anio || d.Anio) === selectedYear)
-                      .sort((a, b) => parseInt(a.MES || a.mes) - parseInt(b.MES || b.mes))
+                      .filter(d => parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0)) === selectedYear)
+                      .sort((a, b) => parseInt(String(findValue(a, ['MES', 'mes', 'month']) || 0)) - parseInt(String(findValue(b, ['MES', 'mes', 'month']) || 0)))
                       .map((d, idx) => {
-                        const mYield = parseFloat(String(d.RENTABILIDAD_MES_PCT || d.yield || 0).replace(',', '.'));
-                        const mProfit = parseFloat(String(d.UTILIDAD_NETA_USD || d.utility || 0).replace(',', '.'));
+                        const mYield = parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'yield', 'monthly_return', 'rentabilidad']));
+                        const mProfit = parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD', 'utility', 'net_profit', 'utilidad']));
+                        const mesIdx = parseInt(String(findValue(d, ['MES', 'mes', 'month']) || 1)) - 1;
+                        const statusStr = String(findValue(d, ['ESTATUS_PAGO', 'status', 'pago', 'estatus']) || 'PENDIENTE').toUpperCase();
                         
                         return (
                           <tr key={idx} className="hover:bg-surface-subtle/50 transition-colors group">
                             <td className="px-8 py-6 font-black text-accent uppercase text-sm">
-                              {monthNames[parseInt(d.MES || d.mes) - 1]}
+                              {monthNames[mesIdx]}
                             </td>
                             <td className={`px-8 py-6 text-right font-black ${mYield >= 0 ? 'text-accent' : 'text-red-600'}`}>
-                              {formatYield(mYield)}
+                              {(mYield * 100).toFixed(2)}%
                             </td>
                             <td className={`px-8 py-6 text-right font-black ${mProfit >= 0 ? 'text-accent' : 'text-red-600'}`}>
                               ${mProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </td>
                             <td className="px-8 py-6 text-center">
                               <span className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border shadow-sm ${
-                                (d.ESTATUS_PAGO || d.status) === 'PAGADO' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+                                statusStr === 'PAGADO' || statusStr === 'COMPLETADO' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'
                               }`}>
-                                {(d.ESTATUS_PAGO || d.status) === 'PAGADO' ? <CheckCircle2 size={12} className="animate-in zoom-in"/> : <Clock size={12} className="animate-pulse"/>}
-                                {d.ESTATUS_PAGO || d.status || 'PENDIENTE'}
+                                {statusStr === 'PAGADO' || statusStr === 'COMPLETADO' ? <CheckCircle2 size={12}/> : <Clock size={12} className="animate-pulse"/>}
+                                {statusStr}
                               </span>
                             </td>
                           </tr>
@@ -253,13 +250,13 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                       })}
                   </tbody>
                 </table>
-                {dividends.filter(d => parseInt(d.ANIO || d.anio || d.Anio) === selectedYear).length === 0 && (
+                {dividends.filter(d => parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0)) === selectedYear).length === 0 && !isLoading && (
                   <div className="py-24 text-center text-text-muted flex flex-col items-center animate-in fade-in duration-500">
                     <div className="p-8 bg-surface-subtle rounded-full mb-4 opacity-20">
                       <AlertCircle size={64} />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em]">Sin liquidaciones para {selectedYear}</p>
-                    <p className="text-[10px] font-bold mt-2 opacity-60">Consulte al Área Administrativa para reportes de periodos anteriores.</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em]">Sin registros centralizados para {selectedYear}</p>
+                    <p className="text-[10px] font-bold mt-2 opacity-60">Los dividendos se reflejarán tras el cierre administrativo de periodo en la nube.</p>
                   </div>
                 )}
               </div>
@@ -267,7 +264,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 <div className="flex items-start gap-4 text-text-muted">
                   <Award size={18} className="text-accent shrink-0 mt-0.5" />
                   <p className="text-[10px] font-bold leading-relaxed max-w-3xl uppercase tracking-tight">
-                    Nota institucional: Los presentes registros de liquidación corresponden al cierre contable de cada período y han sido elaborados conforme a los lineamientos internos de control y reporte. La información reflejada ha sido revisada, validada y certificada por el Comité Técnico de Inversión, en el marco de los procesos de supervisión, auditoría y gestión de riesgo institucional vigentes.
+                    Nota institucional: Los presentes registros corresponden al cierre auditado de la nube corporativa. La integridad de la dispersión es validada periódicamente mediante protocolos de seguridad centralizados.
                   </p>
                 </div>
               </div>

@@ -32,26 +32,42 @@ const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7
 const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
 
 /**
- * Normaliza un string para comparaciones robustas
+ * Normaliza un string para comparaciones robustas: sin tildes, minúsculas y sin caracteres especiales.
+ * Asegura que el acceso desde la nube sea infalible.
  */
-const norm = (str: any): string => 
+export const norm = (str: any): string => 
   String(str || '')
+    .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") 
     .replace(/[^a-z0-9]/g, '');
 
 /**
- * Busca un valor en un objeto basándose en una lista de llaves posibles,
- * ignorando mayúsculas, espacios y caracteres especiales.
+ * Busca un valor en un objeto basándose en una lista de llaves posibles.
+ * Implementa descubrimiento elástico de columnas del registro central.
  */
 export function findValue(obj: any, keys: string[]): any {
-  if (!obj) return null;
+  if (!obj || typeof obj !== 'object') return null;
   const normalizedKeys = keys.map(norm);
   const actualKey = Object.keys(obj).find(k => normalizedKeys.includes(norm(k)));
   return actualKey ? obj[actualKey] : null;
 }
 
+/**
+ * Convierte valores de la nube a números válidos manejando diferentes formatos regionales.
+ */
+export function parseSheetNumber(val: any): number {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return val;
+  const cleanStr = String(val).replace(/\s/g, '').replace(',', '.');
+  const num = parseFloat(cleanStr);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Obtiene datos desde el repositorio central en la nube.
+ */
 export async function fetchTableData(tabName: string): Promise<any[]> {
   try {
     const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&t=${Date.now()}`;
@@ -60,12 +76,23 @@ export async function fetchTableData(tabName: string): Promise<any[]> {
       headers: { 'Accept': 'application/json' }
     });
     
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error(`Error de conexión con el registro central: ${response.status}`);
+      return [];
+    }
     
     const json = await response.json();
-    return Array.isArray(json) ? json : (json.rows || []);
+    const rows = Array.isArray(json) ? json : (json.rows || []);
+    
+    return rows.map((row: any) => {
+      const cleanRow: any = {};
+      Object.keys(row).forEach(key => {
+        cleanRow[key.trim()] = row[key];
+      });
+      return cleanRow;
+    });
   } catch (e) {
-    console.error(`Error crítico al obtener tabla ${tabName}:`, e);
+    console.error(`Fallo crítico en sincronización de nube (${tabName}):`, e);
     return [];
   }
 }
@@ -80,9 +107,9 @@ export async function updateTableData(tabName: string, data: any): Promise<{succ
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    return { success: true, message: "Datos enviados a la cola de sincronización." };
+    return { success: true, message: "Datos sincronizados con la nube." };
   } catch (e) {
-    return { success: false, message: "Error de conexión." };
+    return { success: false, message: "Error de conexión con el servidor central." };
   }
 }
 
@@ -92,25 +119,25 @@ export async function fetchPerformanceHistory(): Promise<any[]> {
 
   const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
   const sorted = raw.sort((a, b) => {
-    const yearA = parseInt(findValue(a, ['ANIO', 'year']));
-    const yearB = parseInt(findValue(b, ['ANIO', 'year']));
+    const yearA = parseInt(String(findValue(a, ['ANIO', 'year']) || 0));
+    const yearB = parseInt(String(findValue(b, ['ANIO', 'year']) || 0));
     if (yearA !== yearB) return yearA - yearB;
-    return parseInt(findValue(a, ['MES', 'month'])) - parseInt(findValue(b, ['MES', 'month']));
+    return parseInt(String(findValue(a, ['MES', 'month']) || 0)) - parseInt(String(findValue(b, ['MES', 'month']) || 0));
   });
 
   let currentPortfolio = 1000;
   let currentBenchmark = 1000;
 
   return sorted.map(item => {
-    const pYield = parseFloat(String(findValue(item, ['RENDIMIENTO_FONDO', 'pYield']) || 0).replace(',', '.'));
-    const bYield = parseFloat(String(findValue(item, ['RENDIMIENTO_SP500', 'bYield']) || 0).replace(',', '.'));
+    const pYield = parseSheetNumber(findValue(item, ['RENDIMIENTO_FONDO', 'pYield', 'rendimiento']));
+    const bYield = parseSheetNumber(findValue(item, ['RENDIMIENTO_SP500', 'bYield', 'sp500']));
     currentPortfolio *= (1 + pYield);
     currentBenchmark *= (1 + bYield);
-    const mes = parseInt(findValue(item, ['MES', 'month']));
+    const mes = parseInt(String(findValue(item, ['MES', 'month']) || 1));
 
     return {
       name: monthNames[mes - 1],
-      year: String(findValue(item, ['ANIO', 'year'])),
+      year: String(findValue(item, ['ANIO', 'year']) || ''),
       pYield: (pYield * 100).toFixed(2),
       bYield: (bYield * 100).toFixed(2),
       portfolio: parseFloat(currentPortfolio.toFixed(2)),
@@ -137,32 +164,31 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
       const res = await fetch(url);
       if (!res.ok) return [];
       const j = await res.json();
-      return Array.isArray(j) ? j : (j.rows || []);
+      const rows = Array.isArray(j) ? j : (j.rows || []);
+      return rows;
     };
 
     const [rawOpen, rawClosed] = await Promise.all([fetchFunc(openTab), fetchFunc(closedTab)]);
 
     const mapRecord = (item: any, isTradeOpen: boolean): Execution => {
       const fmtNum = (v: any) => {
-        if (v === undefined || v === null || v === '') return '0,00';
-        if (typeof v === 'number') return v.toLocaleString('es-ES', { minimumFractionDigits: 2 });
-        const n = parseFloat(String(v).replace(',', '.').replace(/[^0-9.-]/g, ''));
-        return isNaN(n) ? String(v) : n.toLocaleString('es-ES', { minimumFractionDigits: 2 });
+        const n = parseSheetNumber(v);
+        return n.toLocaleString('es-ES', { minimumFractionDigits: 2 });
       };
 
       return {
-        ticket: String(findValue(item, ['ticket', 'id', 'orden', 'posicion']) || '0'),
-        symbol: String(findValue(item, ['symbol', 'simbolo', 'asset', 'instrument']) || '---'),
-        side: String(findValue(item, ['accion', 'side', 'type', 'tipo']) || '---'),
-        lots: fmtNum(findValue(item, ['lotes', 'lots', 'volume', 'size'])),
-        open_time: String(findValue(item, ['fechadeapertura', 'open_date', 'opentime']) || ''),
-        close_time: isTradeOpen ? 'PENDIENTE' : String(findValue(item, ['fechadecierre', 'close_date', 'closetime']) || ''),
-        open_price: fmtNum(findValue(item, ['preciodeapertura', 'open_price', 'priceopen'])),
-        close_price: isTradeOpen ? '---' : fmtNum(findValue(item, ['preciodecierre', 'close_price', 'priceclose'])),
-        sl: fmtNum(findValue(item, ['slprecio', 'stoploss', 'sl'])),
-        tp: fmtNum(findValue(item, ['tpprecio', 'takeprofit', 'tp'])),
-        profit: parseFloat(String(findValue(item, ['beneficioneto', 'profit', 'resultado']) || 0).replace(',', '.')) || 0,
-        gain: fmtNum(findValue(item, ['ganancia', 'gain', 'pct'])),
+        ticket: String(findValue(item, ['ticket', 'id', 'orden', 'posicion', 'ticket_id']) || '0'),
+        symbol: String(findValue(item, ['symbol', 'simbolo', 'asset', 'instrument', 'par']) || '---'),
+        side: String(findValue(item, ['accion', 'side', 'type', 'tipo', 'operacion']) || '---'),
+        lots: fmtNum(findValue(item, ['lotes', 'lots', 'volume', 'size', 'lotaje'])),
+        open_time: String(findValue(item, ['fechadeapertura', 'open_date', 'opentime', 'fecha_apertura']) || ''),
+        close_time: isTradeOpen ? 'PENDIENTE' : String(findValue(item, ['fechadecierre', 'close_date', 'closetime', 'fecha_cierre']) || ''),
+        open_price: fmtNum(findValue(item, ['preciodeapertura', 'open_price', 'priceopen', 'precio_in'])),
+        close_price: isTradeOpen ? '---' : fmtNum(findValue(item, ['preciodecierre', 'close_price', 'priceclose', 'precio_out'])),
+        sl: fmtNum(findValue(item, ['slprecio', 'stoploss', 'sl', 'stop_loss'])),
+        tp: fmtNum(findValue(item, ['tpprecio', 'takeprofit', 'tp', 'take_profit'])),
+        profit: parseSheetNumber(findValue(item, ['beneficioneto', 'profit', 'resultado', 'ganancia_neta'])),
+        gain: fmtNum(findValue(item, ['ganancia', 'gain', 'pct', 'porcentaje'])),
         swap: fmtNum(findValue(item, ['swap', 'interes'])),
         commission: fmtNum(findValue(item, ['commission', 'comision', 'fee'])),
         comment: String(findValue(item, ['comment', 'comentario']) || ''),

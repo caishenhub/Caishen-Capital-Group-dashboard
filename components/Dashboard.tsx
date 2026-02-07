@@ -15,9 +15,34 @@ const Dashboard: React.FC = () => {
   const loadConfigs = async () => {
     setIsLoading(true);
     try {
-      // Cargamos toda la tabla, no solo la primera fila
-      const data = await fetchTableData('CONFIG_MAESTRA');
-      setFullConfig(data || []);
+      // Cargamos configuración maestra y padrón de socios simultáneamente
+      const [configData, sociosData] = await Promise.all([
+        fetchTableData('CONFIG_MAESTRA'),
+        fetchTableData('PADRON_SOCIOS')
+      ]);
+      
+      setFullConfig(configData || []);
+      
+      // Lógica de Refresco Silencioso de Sesión
+      const sessionStr = localStorage.getItem('ccg_session');
+      if (sessionStr && sociosData) {
+        const session = JSON.parse(sessionStr);
+        const updatedUser = sociosData.find(u => 
+          String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase() === String(session.uid).toLowerCase()
+        );
+        
+        if (updatedUser) {
+          const newShares = parseInt(findValue(updatedUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0');
+          if (newShares !== session.shares) {
+            console.log("Detectado cambio en acciones. Sincronizando sesión...");
+            localStorage.setItem('ccg_session', JSON.stringify({
+              ...session,
+              shares: newShares
+            }));
+            window.dispatchEvent(new window.Event('finance_update'));
+          }
+        }
+      }
     } catch (e) {
       console.error("Error cargando configuraciones:", e);
     } finally {
@@ -27,23 +52,15 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadConfigs();
+    // Auto-sync cada 2 minutos (120,000ms) para máxima velocidad
+    const interval = setInterval(loadConfigs, 120000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Identificar la fila de configuración activa basada en el periodo seleccionado
   const activeConfig = useMemo(() => {
     if (!fullConfig.length) return null;
-    
-    if (selectedPeriod === 'General') {
-      return fullConfig[0]; // Por defecto la primera fila es la general
-    }
-
-    // Buscar una fila que coincida con el año seleccionado
-    const yearRow = fullConfig.find(row => {
-      const rowYear = parseInt(findValue(row, ['ANIO', 'year', 'periodo']));
-      return rowYear === selectedPeriod;
-    });
-
-    return yearRow || fullConfig[0];
+    if (selectedPeriod === 'General') return fullConfig[0];
+    return fullConfig.find(row => parseInt(findValue(row, ['ANIO', 'year', 'periodo'])) === selectedPeriod) || fullConfig[0];
   }, [selectedPeriod, fullConfig]);
 
   const currentDate = new Intl.DateTimeFormat('es-ES', { 
@@ -52,7 +69,6 @@ const Dashboard: React.FC = () => {
     year: 'numeric' 
   }).format(new Date());
 
-  // Extracción robusta de valores usando la fila activa (del año o general)
   const liveAUM = parseFloat(String(findValue(activeConfig, ['AUM_TOTAL_FONDO', 'aum', 'total_aum']) || FINANCE_CONFIG.GLOBAL_AUM).replace(',', '.'));
   const liveShareValue = parseFloat(String(findValue(activeConfig, ['VALOR_NOMINAL_ACCION', 'nominal_value', 'precio_accion']) || FINANCE_CONFIG.NOMINAL_VALUE_PER_SHARE).replace(',', '.'));
   const liveTotalShares = parseInt(findValue(activeConfig, ['TOTAL_ACCIONES_FONDO', 'total_shares', 'acciones']) || FINANCE_CONFIG.TOTAL_SHARES);
@@ -66,10 +82,7 @@ const Dashboard: React.FC = () => {
     years.forEach(year => {
       const history = FINANCIAL_HISTORY[year] || [];
       let annualFactor = 1;
-      history.forEach((_, idx) => {
-        const mYield = getStoredYield(year, idx);
-        annualFactor *= (1 + mYield);
-      });
+      history.forEach((_, idx) => annualFactor *= (1 + getStoredYield(year, idx)));
       currentBalance = currentBalance * annualFactor;
       yearlyBalances[year] = currentBalance;
       yearlyCompoundYields[year] = (annualFactor - 1);
@@ -82,9 +95,8 @@ const Dashboard: React.FC = () => {
     if (selectedPeriod === 'General') {
       displayAUM = liveAUM;
       const totalFactor = Object.keys(yearlyCompoundYields).reduce((acc, year) => {
-        const history = FINANCIAL_HISTORY[parseInt(year)] || [];
         let factor = 1;
-        history.forEach((_, idx) => factor *= (1 + getStoredYield(parseInt(year), idx)));
+        (FINANCIAL_HISTORY[parseInt(year)] || []).forEach((_, idx) => factor *= (1 + getStoredYield(parseInt(year), idx)));
         return acc * factor;
       }, 1);
       periodGrowth = (totalFactor - 1) * 100;
@@ -99,59 +111,34 @@ const Dashboard: React.FC = () => {
     return { aum: displayAUM, profit: periodProfit, growth: periodGrowth };
   }, [selectedPeriod, liveAUM, liveShareValue, liveTotalShares]);
 
-  /**
-   * LÓGICA DE FONDO DE RESERVA FINAL
-   * Prioridad 1: Valor en la fila del año seleccionado (Columna META_FONDO_RESERVA_PCT)
-   * Prioridad 2: Valor en la fila general (Columna META_FONDO_RESERVA_PCT)
-   * Prioridad 3: Valor por defecto del sistema (100)
-   */
   const reserveValue = useMemo(() => {
     const rawVal = findValue(activeConfig, ['META_FONDO_RESERVA_PCT', 'fondo_reserva', 'reserva_pct']);
     const sheetValue = parseFloat(String(rawVal).replace(',', '.'));
-    
-    // Si el valor es un número válido en el Sheet, se muestra tal cual (sin importar el año)
-    if (!isNaN(sheetValue)) return sheetValue;
-
-    // Fallback de seguridad si el Excel está vacío
-    return FINANCE_CONFIG.RESERVE_GOAL_PCT;
+    return !isNaN(sheetValue) ? sheetValue : FINANCE_CONFIG.RESERVE_GOAL_PCT;
   }, [activeConfig]);
-
-  const transactions = [
-    { id: 'tx1', type: 'dividend', amount: 31450.20, date: '05 Ene, 2026', desc: 'DISPERSIÓN DIVIDENDOS (41.77%)', status: 'Finalizado' },
-    { id: 'tx2', type: 'rebalance', amount: 12400.00, date: '10 Dic, 2025', desc: 'Ajuste Derivados T4', status: 'Completado' },
-    { id: 'tx3', type: 'audit', amount: 0, date: '05 Dic, 2025', desc: 'Certificación Activos', status: 'Verificado' },
-  ];
-
-  const marketWatch = [
-    { id: 'w1', name: 'S&P 500 Index', symbol: 'SPX', price: '5,982.10', change: '+1.45%', color: '#1d1c2d', pos: true },
-    { id: 'w2', name: 'Gold (Spot)', symbol: 'XAU/USD', price: '2,645.40', change: '+0.82%', color: '#D4AF37', pos: true },
-    { id: 'w3', name: 'Bitcoin', symbol: 'BTC', price: '96,240.00', change: '-2.15%', color: '#f7931a', pos: false },
-  ];
-
-  const getTxStyles = (type: string) => {
-    switch(type) {
-      case 'dividend': return { bg: 'bg-green-50', text: 'text-green-600', icon: <PiggyBank className="size-4" /> };
-      case 'rebalance': return { bg: 'bg-blue-50', text: 'text-blue-600', icon: <Repeat className="size-4" /> };
-      case 'audit': return { bg: 'bg-amber-50', text: 'text-amber-600', icon: <ShieldCheck className="size-4" /> };
-      default: return { bg: 'bg-gray-50', text: 'text-accent', icon: <ArrowUpRight className="size-4" /> };
-    }
-  };
 
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 max-w-full overflow-x-hidden">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
             <h1 className="text-accent text-2xl md:text-4xl font-black tracking-tighter uppercase leading-tight mb-1">Panel de Control</h1>
-            <p className="text-text-secondary text-[11px] md:text-base font-medium">Estado consolidado al {currentDate}.</p>
+            
+            <button 
+              onClick={loadConfigs}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 group cursor-pointer"
+            >
+              <div className="relative flex size-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${!isLoading ? 'duration-700' : 'duration-300'}`}></span>
+                <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
+              </div>
+              <span className="text-[9px] font-black text-accent uppercase tracking-widest">
+                {isLoading ? 'Sincronizando...' : 'Live Ledger'}
+              </span>
+            </button>
           </div>
-          <button 
-            onClick={loadConfigs}
-            className={`p-2 bg-white border border-surface-border rounded-xl text-accent hover:bg-surface-subtle transition-all ${isLoading ? 'opacity-50' : ''}`}
-            title="Sincronizar con Google Sheets"
-          >
-            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-          </button>
+          <p className="text-text-secondary text-[11px] md:text-base font-medium">Estado consolidado al {currentDate}.</p>
         </div>
 
         <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar max-w-full">

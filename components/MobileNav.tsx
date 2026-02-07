@@ -17,9 +17,9 @@ const MobileNav: React.FC = () => {
   const navItems = [
     { name: 'Portafolio', path: '/portfolio', icon: PieChart },
     { name: 'Socios', path: '/users', icon: Users },
-    { name: 'Libro', path: '/executions', icon: Database, central: true },
+    { name: 'Inicio', path: '/', icon: LayoutDashboard, central: true },
     { name: 'Resumen', path: '/summary', icon: TrendingUp },
-    { name: 'Inicio', path: '/', icon: LayoutDashboard },
+    { name: 'Libro', path: '/executions', icon: Database },
   ];
 
   return (
