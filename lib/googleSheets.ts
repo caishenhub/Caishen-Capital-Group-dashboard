@@ -31,9 +31,14 @@ const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4B
 const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7yRPTdP84d1QGxsQejGF2dQj5M9VFSSZBiDsSwsMsNRIGUjY5wXFgJDOjMQ/exec';
 const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
 
+// Sistema de caché en memoria para pre-fetching
+const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
+// Registro de peticiones en curso para evitar duplicidad
+const inFlightRequests: Record<string, Promise<any[]>> = {};
+const CACHE_DURATION = 1000 * 60 * 5; // 5 minutos
+
 /**
- * Normaliza un string para comparaciones robustas: sin tildes, minúsculas y sin caracteres especiales.
- * Asegura que el acceso desde la nube sea infalible.
+ * Normaliza un string para comparaciones robustas.
  */
 export const norm = (str: any): string => 
   String(str || '')
@@ -43,10 +48,6 @@ export const norm = (str: any): string =>
     .replace(/[\u0300-\u036f]/g, "") 
     .replace(/[^a-z0-9]/g, '');
 
-/**
- * Busca un valor en un objeto basándose en una lista de llaves posibles.
- * Implementa descubrimiento elástico de columnas del registro central.
- */
 export function findValue(obj: any, keys: string[]): any {
   if (!obj || typeof obj !== 'object') return null;
   const normalizedKeys = keys.map(norm);
@@ -54,9 +55,6 @@ export function findValue(obj: any, keys: string[]): any {
   return actualKey ? obj[actualKey] : null;
 }
 
-/**
- * Convierte valores de la nube a números válidos manejando diferentes formatos regionales.
- */
 export function parseSheetNumber(val: any): number {
   if (val === undefined || val === null || val === '') return 0;
   if (typeof val === 'number') return val;
@@ -66,35 +64,59 @@ export function parseSheetNumber(val: any): number {
 }
 
 /**
- * Obtiene datos desde el repositorio central en la nube.
+ * Obtiene datos con soporte de caché y deduplicación de peticiones.
  */
-export async function fetchTableData(tabName: string): Promise<any[]> {
-  try {
-    const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&t=${Date.now()}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-    
-    if (!response.ok) {
-      console.error(`Error de conexión con el registro central: ${response.status}`);
-      return [];
+export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
+  // 1. Verificar si ya tenemos los datos en caché válida
+  if (!ignoreCache && prefetchCache[tabName]) {
+    const cached = prefetchCache[tabName];
+    if (Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
     }
-    
-    const json = await response.json();
-    const rows = Array.isArray(json) ? json : (json.rows || []);
-    
-    return rows.map((row: any) => {
-      const cleanRow: any = {};
-      Object.keys(row).forEach(key => {
-        cleanRow[key.trim()] = row[key];
-      });
-      return cleanRow;
-    });
-  } catch (e) {
-    console.error(`Fallo crítico en sincronización de nube (${tabName}):`, e);
-    return [];
   }
+
+  // 2. Verificar si ya hay una petición IDÉNTICA en curso
+  if (inFlightRequests[tabName]) {
+    return inFlightRequests[tabName];
+  }
+
+  // 3. Crear la nueva petición y registrarla como "en vuelo"
+  const fetchPromise = (async () => {
+    try {
+      const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&t=${Date.now()}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      
+      const json = await response.json();
+      const rows = Array.isArray(json) ? json : (json.rows || []);
+      
+      const processedData = rows.map((row: any) => {
+        const cleanRow: any = {};
+        Object.keys(row).forEach(key => {
+          cleanRow[key.trim()] = row[key];
+        });
+        return cleanRow;
+      });
+
+      // Guardar en caché para futuras consultas rápidas
+      prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+      
+      return processedData;
+    } catch (e) {
+      console.error(`Fallo crítico en sincronización de nube (${tabName}):`, e);
+      return [];
+    } finally {
+      // Limpiar el registro de peticiones en vuelo al terminar
+      delete inFlightRequests[tabName];
+    }
+  })();
+
+  inFlightRequests[tabName] = fetchPromise;
+  return fetchPromise;
 }
 
 export async function updateTableData(tabName: string, data: any): Promise<{success: boolean, message: string}> {

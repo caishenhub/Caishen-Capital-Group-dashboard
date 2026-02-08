@@ -41,7 +41,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     
     setError('');
 
-    // Si el pool aún no carga, intentamos forzar una carga rápida
     let currentPool = userPool;
     if (isPoolLoading) {
       setIsSyncing(true);
@@ -56,7 +55,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       }
     }
 
-    // Búsqueda instantánea local
     const user = currentPool.find(u => {
       const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
       const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
@@ -67,6 +65,12 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       setFoundUser(user);
       setShowPinModal(true);
       setIsSyncing(false);
+      
+      // DISPARO INMEDIATO DE DATOS DEL DASHBOARD (Pre-fetching agresivo)
+      // No esperamos a que terminen, simplemente lanzamos las peticiones para que la caché
+      // o las inFlightRequests de googleSheets.ts empiecen a trabajar mientras el usuario pone el PIN.
+      fetchTableData('CONFIG_MAESTRA');
+      fetchTableData('HISTORIAL_RENDIMIENTOS');
     } else {
       setError('Socio no encontrado en el padrón oficial.');
       setIsSyncing(false);
@@ -132,7 +136,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="space-y-2">
             <h1 className="text-2xl font-black text-accent tracking-tighter uppercase">Portal Accionistas</h1>
             
-            {/* Indicador de carga de base de datos */}
             <div className="flex items-center justify-center gap-1.5 pt-1">
               {isPoolLoading ? (
                 <>
@@ -206,7 +209,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="absolute inset-0 bg-accent/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => !isSyncing && setShowPinModal(false)} />
           <div className="relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             
-            {/* Botón Cerrar */}
             <button 
               onClick={() => setShowPinModal(false)}
               className="absolute top-6 right-6 p-2 text-text-muted hover:bg-gray-100 rounded-full transition-all"
@@ -216,21 +218,21 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             <div className="px-8 py-10 flex flex-col items-center">
               
-              {/* Icono Lock */}
               <div className="size-20 bg-accent rounded-[24px] flex items-center justify-center text-primary shadow-2xl mb-6">
                 <Lock size={32} />
               </div>
 
-              {/* Títulos */}
               <div className="text-center space-y-1 mb-8">
                 <h3 className="text-xl font-black text-accent tracking-tighter uppercase">Ingrese su PIN</h3>
                 <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">
                   Código único para <span className="text-accent">{findValue(foundUser, ['UID_SOCIO', 'uid', 'id_socio'])}</span>
                 </p>
-                <p className="text-[8px] text-text-muted font-black uppercase tracking-widest pt-1">Soporta teclado numérico físico</p>
+                <div className="flex items-center justify-center gap-1.5 mt-2">
+                   <div className="size-1.5 bg-primary rounded-full animate-pulse"></div>
+                   <span className="text-[8px] font-black text-primary uppercase tracking-widest">Pre-cargando Dashboard...</span>
+                </div>
               </div>
 
-              {/* PIN Display */}
               <div className="flex justify-center gap-3 mb-10">
                 {[0, 1, 2, 3].map((i) => (
                   <div 
@@ -246,7 +248,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 ))}
               </div>
 
-              {/* Numpad Virtual */}
               <div className="grid grid-cols-3 gap-3 w-full mb-8">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                   <button
@@ -282,7 +283,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </button>
               </div>
 
-              {/* Botón Volver */}
               <button 
                 onClick={() => setShowPinModal(false)}
                 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] hover:text-accent transition-colors"
@@ -290,7 +290,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 Volver
               </button>
 
-              {/* Error Alert */}
               {error === 'PIN Incorrecto' && (
                 <div className="mt-6 flex items-center gap-1.5 text-[10px] font-black text-red-600 uppercase tracking-widest animate-in slide-in-from-top-2">
                   <AlertCircle size={14} />

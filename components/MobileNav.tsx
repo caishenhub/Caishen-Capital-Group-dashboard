@@ -6,8 +6,7 @@ import {
   PieChart, 
   TrendingUp, 
   Users,
-  Headset,
-  Database
+  Headset
 } from 'lucide-react';
 
 const MobileNav: React.FC = () => {
@@ -19,7 +18,7 @@ const MobileNav: React.FC = () => {
     { name: 'Socios', path: '/users', icon: Users },
     { name: 'Inicio', path: '/', icon: LayoutDashboard, central: true },
     { name: 'Resumen', path: '/summary', icon: TrendingUp },
-    { name: 'Libro', path: '/executions', icon: Database },
+    { name: 'Soporte', path: '/support', icon: Headset },
   ];
 
   return (

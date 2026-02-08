@@ -50,6 +50,7 @@ const UserManagement: React.FC = () => {
         const status = String(findValue(u, ['ESTATUS_SOCIO', 'status', 'estado', 'estatus']) || 'Activo');
         const shares = parseSheetNumber(findValue(u, ['ACCIONES_POSEIDAS', 'shares', 'acciones', 'cantidad']));
         const pin = String(findValue(u, ['PIN_ACCESO', 'pin', 'clave', 'password']) || '0000');
+        const registrationDate = findValue(u, ['FECHA_INGRESO', 'fecha', 'registro', 'ingreso', 'date_joined']) || null;
         
         const initials = name.split(' ').filter(n => n).map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -62,6 +63,7 @@ const UserManagement: React.FC = () => {
           status,
           shares,
           pin,
+          registrationDate,
           initials: initials || 'S',
           color: idx % 2 === 0 ? 'bg-accent text-primary' : 'bg-primary/10 text-accent',
           raw: u
@@ -125,6 +127,15 @@ const UserManagement: React.FC = () => {
     return `${user.charAt(0)}••••@••••${domain.substring(domain.lastIndexOf('.'))}`;
   };
 
+  const maskUid = (uid: string) => {
+    if (!uid) return '***';
+    if (uid.includes('-')) {
+      const parts = uid.split('-');
+      return `${parts[0]}-***`;
+    }
+    return '***';
+  };
+
   if (selectedUser) {
     return <ShareholderProfile user={selectedUser} onBack={() => setSelectedUser(null)} />;
   }
@@ -149,7 +160,7 @@ const UserManagement: React.FC = () => {
               </span>
             </button>
           </div>
-          <p className="text-text-secondary text-sm md:text-base font-medium">Registro central de participación societaria sincronizado desde la nube corporativa.</p>
+          <p className="text-text-secondary text-sm md:text-base font-medium">Registro central protegido por protocolos de privacidad corporativa.</p>
         </div>
 
         <div className="flex flex-col items-center md:items-end gap-3 self-center md:self-start">
@@ -162,7 +173,7 @@ const UserManagement: React.FC = () => {
           </button>
           <div className="flex items-center gap-2 px-4 py-1.5 bg-surface-subtle border border-surface-border rounded-xl">
              <Shield size={12} className="text-accent" />
-             <span className="text-[10px] text-text-muted font-black uppercase tracking-widest">Auditoría de Nube Activa</span>
+             <span className="text-[10px] text-text-muted font-black uppercase tracking-widest">Modo Privacidad Activo</span>
           </div>
         </div>
       </header>
@@ -239,7 +250,9 @@ const UserManagement: React.FC = () => {
               ) : filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-surface-subtle/20 transition-colors group">
                   <td className="px-8 py-6 text-center">
-                    <span className="text-xs font-mono font-bold text-text-muted/60">{user.uid}</span>
+                    <span className="text-xs font-mono font-bold text-text-muted/60">
+                      {maskUid(user.uid)}
+                    </span>
                   </td>
                   <td className="px-8 py-6">
                     <button 
@@ -258,8 +271,8 @@ const UserManagement: React.FC = () => {
                     </button>
                   </td>
                   <td className="px-8 py-6 text-center">
-                    <div className="text-base font-black text-accent">{user.shares}</div>
-                    <div className="text-[9px] font-bold text-text-muted uppercase">Unidades</div>
+                    <div className="text-base font-black text-accent tracking-widest">***</div>
+                    <div className="text-[9px] font-bold text-text-muted uppercase">Protegidas</div>
                   </td>
                   <td className="px-8 py-6 text-center">
                     <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[9px] font-black border shadow-sm uppercase tracking-widest ${
@@ -301,7 +314,24 @@ const UserManagement: React.FC = () => {
                   Confirma la credencial única de acceso asignada a <span className="font-bold text-accent">{pendingUser?.name}</span>.
                 </p>
               </div>
-              <form onSubmit={handleVerifyPin} className="space-y-6">
+
+              <div className="space-y-6">
+                {/* PIN Display - Sistema de Cajas Independientes */}
+                <div className="flex justify-center gap-3">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div 
+                      key={i} 
+                      className={`size-14 rounded-2xl border-2 flex items-center justify-center transition-all ${
+                        pin.length > i ? 'border-primary bg-primary/5 shadow-sm' : 'border-surface-border'
+                      } ${error ? 'border-red-500 bg-red-50' : ''}`}
+                    >
+                      {pin.length > i && (
+                        <div className="size-3 bg-accent rounded-full animate-in zoom-in" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 <div className="relative group">
                   <input 
                     autoFocus
@@ -309,23 +339,28 @@ const UserManagement: React.FC = () => {
                     maxLength={4}
                     value={pin}
                     onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                    className={`w-full bg-surface-subtle border-2 text-center text-4xl font-black tracking-[0.8em] py-5 rounded-[24px] focus:ring-0 transition-all ${
-                      error ? 'border-red-500 text-red-600' : 'border-surface-border focus:border-primary text-accent'
-                    }`}
-                    placeholder="••••"
+                    onKeyDown={(e) => e.key === 'Enter' && pin.length === 4 && handleVerifyPin()}
+                    className="absolute inset-0 opacity-0 cursor-default"
                   />
                   {error && (
-                    <div className="absolute -bottom-8 left-0 right-0 flex items-center justify-center gap-1.5 text-[11px] font-black text-red-600 uppercase tracking-widest animate-in slide-in-from-top-1">
+                    <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-red-600 uppercase tracking-widest animate-in slide-in-from-top-1">
                       <AlertCircle size={14} />
                       <span>PIN Incorrecto</span>
                     </div>
                   )}
                 </div>
+
                 <div className="pt-6 grid grid-cols-2 gap-4">
                   <button type="button" onClick={() => setIsVerifying(false)} className="px-6 py-4 rounded-2xl text-xs font-black text-text-muted hover:bg-gray-100 transition-all uppercase tracking-widest">Cancelar</button>
-                  <button type="submit" className="px-6 py-4 rounded-2xl bg-accent text-primary font-black text-xs uppercase tracking-widest shadow-xl hover:shadow-primary/20 hover:-translate-y-1 transition-all active:scale-95">Autorizar</button>
+                  <button 
+                    onClick={() => handleVerifyPin()}
+                    disabled={pin.length < 4}
+                    className="px-6 py-4 rounded-2xl bg-accent text-primary font-black text-xs uppercase tracking-widest shadow-xl hover:shadow-primary/20 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    Autorizar
+                  </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

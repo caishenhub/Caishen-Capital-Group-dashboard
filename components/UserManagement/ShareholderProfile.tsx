@@ -35,11 +35,34 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         fetchTableData('CONFIG_MAESTRA')
       ]);
       
-      // Búsqueda normalizada del socio en la nube para asegurar vinculación
       const targetUidNorm = norm(user.uid);
+      
+      // Obtenemos la fecha de ingreso del usuario (del objeto user pasado por props)
+      // Si no existe, se asume que puede ver todo (fallback).
+      const userRegDate = user.registrationDate ? new Date(user.registrationDate) : null;
+
       const userDividends = allDividends.filter(d => {
         const rowUid = findValue(d, ['UID_SOCIO', 'uid', 'id_socio', 'id', 'socio']);
-        return norm(rowUid) === targetUidNorm;
+        const matchUid = norm(rowUid) === targetUidNorm;
+        
+        if (!matchUid) return false;
+
+        // Validación Cronológica: Si tenemos fecha de ingreso, filtramos dividendos previos
+        if (userRegDate) {
+          const dYear = parseInt(findValue(d, ['ANIO', 'year']) || 0);
+          const dMonth = parseInt(findValue(d, ['MES', 'month']) || 1);
+          const divDate = new Date(dYear, dMonth - 1, 1);
+          
+          // Solo incluimos el dividendo si el mes de operación es posterior o igual al registro
+          // Comparamos año y mes para mayor precisión
+          const regYear = userRegDate.getFullYear();
+          const regMonth = userRegDate.getMonth();
+          
+          if (dYear < regYear) return false;
+          if (dYear === regYear && (dMonth - 1) < regMonth) return false;
+        }
+
+        return true;
       });
       
       setDividends(userDividends);
@@ -118,7 +141,9 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   <span className="px-3 py-1 bg-primary/10 text-accent text-[10px] font-black rounded-lg uppercase tracking-widest border border-primary/20">
                     {user.uid}
                   </span>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Identidad Certificada</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                    {user.registrationDate ? `Socio desde: ${new Date(user.registrationDate).toLocaleDateString()}` : 'Identidad Certificada'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -264,7 +289,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 <div className="flex items-start gap-4 text-text-muted">
                   <Award size={18} className="text-accent shrink-0 mt-0.5" />
                   <p className="text-[10px] font-bold leading-relaxed max-w-3xl uppercase tracking-tight">
-                    Nota institucional: Los presentes registros corresponden al cierre auditado de la nube corporativa. La integridad de la dispersión es validada periódicamente mediante protocolos de seguridad centralizados.
+                    Nota institucional: Los presentes registros corresponden al cierre auditado de la nube corporativa y respetan la fecha de ingreso individual de cada socio.
                   </p>
                 </div>
               </div>
