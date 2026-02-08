@@ -25,6 +25,19 @@ export interface ExecutionData {
   open: Execution[];
 }
 
+export interface PortfolioCategory {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface PortfolioKpi {
+  label: string;
+  value: string;
+  sub: string;
+  type: 'diversificacion' | 'exposicion' | 'riesgo';
+}
+
 export type MarketCategory = 'forex' | 'stocks' | 'commodities';
 
 const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4BAMWTO7_gogMAq1SzdvDJOAUg8tWA5G3dqpm7m4LBTwRdzDHVAY/exec'; 
@@ -53,14 +66,11 @@ export function findValue(obj: any, keys: string[]): any {
 export function parseSheetNumber(val: any): number {
   if (val === undefined || val === null || val === '') return 0;
   if (typeof val === 'number') return val;
-  const cleanStr = String(val).replace(/\s/g, '').replace(',', '.');
+  const cleanStr = String(val).replace(/\s/g, '').replace(',', '.').replace('%', '');
   const num = parseFloat(cleanStr);
   return isNaN(num) ? 0 : num;
 }
 
-/**
- * Verifica si el endpoint de Google Apps Script está respondiendo.
- */
 export async function checkConnection(): Promise<boolean> {
   if (!GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20) return false;
   try {
@@ -74,9 +84,6 @@ export async function checkConnection(): Promise<boolean> {
   }
 }
 
-/**
- * Motor de sincronización ultraligero.
- */
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!GOOGLE_CONFIG.SCRIPT_API_URL) return [];
 
@@ -122,6 +129,42 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   inFlightRequests[tabName] = fetchPromise;
   return fetchPromise;
+}
+
+export async function fetchPortfolioStructure(): Promise<PortfolioCategory[]> {
+  const data = await fetchTableData('ESTRUCTURA_PORTAFOLIO');
+  return data.map(item => ({
+    name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
+    value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'pct', 'porcentaje'])),
+    color: String(findValue(item, ['COLOR', 'color', 'hex']) || '#9CA3AF')
+  }));
+}
+
+export async function fetchPortfolioKpis(): Promise<PortfolioKpi[]> {
+  const data = await fetchTableData('KPI_PORTAFOLIO');
+  return data.map(item => {
+    const rawVal = findValue(item, ['VALOR', 'value', 'dato']);
+    const numVal = parseSheetNumber(rawVal);
+    const type = String(findValue(item, ['TIPO', 'type']) || '').toLowerCase();
+    
+    let displayValue = String(rawVal || '---');
+    
+    // Forzar porcentaje si el tipo es exposición o diversificación
+    if (numVal !== 0 && (type === 'exposicion' || type === 'diversificacion')) {
+      // Si viene como decimal (0.309) multiplicamos por 100
+      const pctValue = Math.abs(numVal) < 1 ? numVal * 100 : numVal;
+      displayValue = pctValue.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + '%';
+    } else if (typeof rawVal === 'number' && rawVal > 1) {
+      displayValue = rawVal.toLocaleString('es-ES');
+    }
+
+    return {
+      label: String(findValue(item, ['ETIQUETA', 'label', 'titulo']) || ''),
+      value: displayValue,
+      sub: String(findValue(item, ['SUBTEXTO', 'subtext', 'descripcion']) || ''),
+      type: type as any
+    };
+  });
 }
 
 export async function updateTableData(tabName: string, data: any): Promise<{success: boolean, message: string}> {

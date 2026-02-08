@@ -4,8 +4,7 @@ import { Wallet, PiggyBank, ShieldCheck, Activity, Target, RefreshCw } from 'luc
 import StatCard from './StatCard';
 import PerformanceChart from './Charts/PerformanceChart';
 import AllocationPieChart from './Charts/AllocationPieChart';
-import { FINANCE_CONFIG } from '../constants';
-import { fetchTableData, findValue, parseSheetNumber } from '../lib/googleSheets';
+import { fetchTableData, findValue, parseSheetNumber, fetchPortfolioStructure, PortfolioCategory } from '../lib/googleSheets';
 
 const DashboardSkeleton: React.FC = () => {
   return (
@@ -40,21 +39,23 @@ const Dashboard: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'General' | number>('General');
   const [fullConfig, setFullConfig] = useState<any[]>([]);
   const [historyData, setHistoryData] = useState<any[]>([]);
+  const [portfolioData, setPortfolioData] = useState<PortfolioCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
   const loadConfigs = async (isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
-      // Priorizamos CONFIG_MAESTRA y PADRON_SOCIOS que son vitales para la UI
-      const [configData, sociosData, performanceData] = await Promise.all([
+      const [configData, sociosData, performanceData, pData] = await Promise.all([
         fetchTableData('CONFIG_MAESTRA'),
         fetchTableData('PADRON_SOCIOS'),
-        fetchTableData('HISTORIAL_RENDIMIENTOS')
+        fetchTableData('HISTORIAL_RENDIMIENTOS'),
+        fetchPortfolioStructure()
       ]);
       
       setFullConfig(configData || []);
       setHistoryData(performanceData || []);
+      setPortfolioData(pData || []);
       
       const sessionStr = localStorage.getItem('ccg_session');
       if (sessionStr && sociosData) {
@@ -77,7 +78,6 @@ const Dashboard: React.FC = () => {
     } catch (e) {
       console.error("Error cargando configuraciones:", e);
     } finally {
-      // Nos aseguramos de marcar la carga inicial como completada siempre
       setHasLoadedInitial(true);
       setIsLoading(false);
     }
@@ -100,10 +100,8 @@ const Dashboard: React.FC = () => {
       return { aum: 0, profit: 0, growth: 0 };
     }
 
-    // 1. AUM del periodo seleccionado
     const liveAUM = parseSheetNumber(findValue(activeConfig, ['AUM_TOTAL_FONDO', 'aum', 'total_aum', 'capital_total']));
     
-    // 2. RENDIMIENTO (Diferenciado por vista)
     let growthValue = 0;
     if (selectedPeriod === 'General') {
       const annualYieldRaw = parseSheetNumber(findValue(activeConfig, ['RENDIMIENTO_ANUAL_PCT', 'rendimiento_anual', 'annual_yield']));
@@ -118,7 +116,6 @@ const Dashboard: React.FC = () => {
       growthValue = sumYield;
     }
 
-    // 3. Cálculo de Utilidad USD (Sumatoria basada en historial filtrada por periodo)
     let calculatedProfitUSD = 0;
     const dataToProcess = selectedPeriod === 'General' 
       ? [...historyData] 
@@ -243,20 +240,15 @@ const Dashboard: React.FC = () => {
             </div>
             <h3 className="text-accent text-base font-extrabold tracking-tight uppercase">Activos Gestionados</h3>
           </div>
-          <AllocationPieChart />
+          <AllocationPieChart data={portfolioData} totalAum={metrics.aum} />
           <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-2 w-full px-2">
-            {[
-              { label: 'Forex', color: 'bg-accent', val: '20.6%' },
-              { label: 'Derivados', color: 'bg-[#D4AF37]', val: '30.9%' },
-              { label: 'Acciones', color: 'bg-blue-400', val: '10.3%' },
-              { label: 'Real Estate', color: 'bg-primary', val: '25.8%' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
+            {portfolioData.map((item) => (
+              <div key={item.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className={`size-1.5 rounded-full ${item.color}`}></div>
-                  <span className="text-[9px] font-bold text-text-secondary">{item.label}</span>
+                  <div className="size-1.5 rounded-full" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-[9px] font-bold text-text-secondary">{item.name}</span>
                 </div>
-                <span className="text-[9px] font-black text-accent">{item.val}</span>
+                <span className="text-[9px] font-black text-accent">{item.value}%</span>
               </div>
             ))}
           </div>

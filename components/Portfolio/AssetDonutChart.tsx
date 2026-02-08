@@ -1,54 +1,72 @@
 
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { FINANCE_CONFIG } from '../../constants';
+import { PortfolioCategory } from '../../lib/googleSheets';
 
-const data = [
-  { name: 'Forex', value: 20.6, color: '#1d1c2d' },
-  { name: 'Derivados', value: 30.9, color: '#D4AF37' },
-  { name: 'Acciones', value: 10.3, color: '#60a5fa' },
-  { name: 'Inmobiliario', value: 25.8, color: '#ceff04' },
-  { name: 'Algorítmico', value: 12.4, color: '#9CA3AF' },
-];
+interface AssetDonutChartProps {
+  data: PortfolioCategory[];
+  totalAum: number;
+}
 
-const AssetDonutChart: React.FC = () => {
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const { name, value, color } = payload[0].payload;
+    return (
+      <div className="bg-[#1d1c2d] border border-white/10 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="size-2 rounded-full" style={{ backgroundColor: color }}></div>
+          <p className="text-[#9ca3af] text-[10px] font-black uppercase tracking-[0.2em]">{name}</p>
+        </div>
+        <p className="text-white text-xl font-black tracking-tighter">
+          {value}%
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const AssetDonutChart: React.FC<AssetDonutChartProps> = ({ data, totalAum }) => {
+  const displayData = data.length > 0 ? data : [{ name: 'Sincronizando...', value: 100, color: '#f3f4f6' }];
+
   return (
     <div className="w-full h-full relative">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={displayData}
             cx="50%"
             cy="50%"
-            innerRadius="65%"
-            outerRadius="85%"
-            paddingAngle={4}
+            innerRadius="68%"
+            outerRadius="92%"
+            paddingAngle={6}
             dataKey="value"
             stroke="none"
             animationDuration={1500}
+            startAngle={90}
+            endAngle={450}
           >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
+            {displayData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.color} 
+                className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+              />
             ))}
           </Pie>
           <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#1d1c2d', 
-              border: 'none', 
-              borderRadius: '16px',
-              padding: '12px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-            }}
-            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}
-            labelStyle={{ display: 'none' }}
+            content={<CustomTooltip />} 
+            cursor={{ stroke: 'none' }}
+            wrapperStyle={{ outline: 'none', zIndex: 100 }}
           />
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-text-muted text-[9px] md:text-[11px] font-bold uppercase tracking-widest mb-1">AUM Global</span>
-        <span className="text-accent text-xl md:text-3xl font-black tracking-tighter">
-          ${(FINANCE_CONFIG.GLOBAL_AUM / 1000).toFixed(1)}k
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none translate-y-[-8px]">
+        <span className="text-[#9ca3af] text-[12px] font-black uppercase tracking-[0.2em] mb-2">Total AUM</span>
+        <span className="text-[#1d1c2d] text-4xl font-black tracking-tighter leading-none">
+          ${(totalAum / 1000).toFixed(1)}k
         </span>
+        <div className="h-1.5 w-10 bg-[#ceff04] rounded-full mt-3 shadow-[0_0_15px_rgba(206,255,4,0.6)]"></div>
       </div>
     </div>
   );
