@@ -65,6 +65,7 @@ export function parseSheetNumber(val: any): number {
 
 /**
  * Obtiene datos con soporte de caché y deduplicación de peticiones.
+ * Optimizada para Vercel eliminando headers que disparan pre-flight CORS.
  */
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   // 1. Verificar si ya tenemos los datos en caché válida
@@ -84,10 +85,10 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   const fetchPromise = (async () => {
     try {
       const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&t=${Date.now()}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
+      
+      // Simplificamos la petición: eliminamos headers personalizados
+      // Esto evita que el navegador haga un OPTIONS request que Google Script no maneja bien.
+      const response = await fetch(url);
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
@@ -107,8 +108,9 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
       
       return processedData;
     } catch (e) {
-      console.error(`Fallo crítico en sincronización de nube (${tabName}):`, e);
-      return [];
+      console.error(`Error en sincronización (${tabName}):`, e);
+      // Si falla, devolvemos caché vieja si existe, o array vacío
+      return prefetchCache[tabName]?.data || [];
     } finally {
       // Limpiar el registro de peticiones en vuelo al terminar
       delete inFlightRequests[tabName];
@@ -140,7 +142,7 @@ export async function fetchPerformanceHistory(): Promise<any[]> {
   if (!raw || raw.length === 0) return [];
 
   const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-  const sorted = raw.sort((a, b) => {
+  const sorted = [...raw].sort((a, b) => {
     const yearA = parseInt(String(findValue(a, ['ANIO', 'year']) || 0));
     const yearB = parseInt(String(findValue(b, ['ANIO', 'year']) || 0));
     if (yearA !== yearB) return yearA - yearB;

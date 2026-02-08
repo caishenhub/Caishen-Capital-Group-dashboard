@@ -46,6 +46,7 @@ const Dashboard: React.FC = () => {
   const loadConfigs = async (isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
+      // Priorizamos CONFIG_MAESTRA y PADRON_SOCIOS que son vitales para la UI
       const [configData, sociosData, performanceData] = await Promise.all([
         fetchTableData('CONFIG_MAESTRA'),
         fetchTableData('PADRON_SOCIOS'),
@@ -73,10 +74,11 @@ const Dashboard: React.FC = () => {
           }
         }
       }
-      setHasLoadedInitial(true);
     } catch (e) {
       console.error("Error cargando configuraciones:", e);
     } finally {
+      // Nos aseguramos de marcar la carga inicial como completada siempre
+      setHasLoadedInitial(true);
       setIsLoading(false);
     }
   };
@@ -88,13 +90,13 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const activeConfig = useMemo(() => {
-    if (!fullConfig.length) return null;
+    if (!fullConfig || fullConfig.length === 0) return null;
     if (selectedPeriod === 'General') return fullConfig[0];
     return fullConfig.find(row => parseInt(findValue(row, ['ANIO', 'year', 'periodo'])) === selectedPeriod) || fullConfig[0];
   }, [selectedPeriod, fullConfig]);
 
   const metrics = useMemo(() => {
-    if (fullConfig.length === 0 || historyData.length === 0) {
+    if (!fullConfig || fullConfig.length === 0 || !historyData) {
       return { aum: 0, profit: 0, growth: 0 };
     }
 
@@ -104,15 +106,12 @@ const Dashboard: React.FC = () => {
     // 2. RENDIMIENTO (Diferenciado por vista)
     let growthValue = 0;
     if (selectedPeriod === 'General') {
-      // Para la vista General, seguimos usando el valor maestro consolidado (C2)
       const annualYieldRaw = parseSheetNumber(findValue(activeConfig, ['RENDIMIENTO_ANUAL_PCT', 'rendimiento_anual', 'annual_yield']));
       growthValue = (Math.abs(annualYieldRaw) < 1 && annualYieldRaw !== 0) ? annualYieldRaw * 100 : annualYieldRaw;
     } else {
-      // Para un año específico (ej. 2026), hacemos la SUMATORIA dinámica del historial de ese año
       const yearlyRows = historyData.filter(h => parseInt(findValue(h, ['ANIO', 'year'])) === selectedPeriod);
       const sumYield = yearlyRows.reduce((acc, row) => {
         const val = parseSheetNumber(findValue(row, ['RENDIMIENTO_FONDO', 'rendimiento', 'yield']));
-        // Normalizamos cada mes: si viene como 0.021 lo sumamos como 2.1
         const normalizedVal = (Math.abs(val) < 1 && val !== 0) ? val * 100 : val;
         return acc + normalizedVal;
       }, 0);
