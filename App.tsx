@@ -126,7 +126,7 @@ const App: React.FC = () => {
           <Route path="/portfolio" element={<Layout title="Mi Portafolio"><Portfolio /></Layout>} />
           <Route path="/executions" element={<Layout title="Libro de Ejecuciones"><ExecutionLogs /></Layout>} />
           <Route path="/summary" element={<Layout title="Resumen Ejecutivo"><ExecutiveSummary /></Layout>} />
-          <Route path="/reports" element={<Layout title="Reportes Administrativos"><Reports /></Route>} />
+          <Route path="/reports" element={<Layout title="Reportes Administrativos"><Reports /></Layout>} />
           <Route path="/support" element={<Layout title="Soporte y Ayuda"><Support /></Layout>} />
           <Route path="/admin/finance" element={<Layout title="Control Financiero"><FinancialControl /></Layout>} />
           <Route path="*" element={<Navigate to="/" replace />} />
