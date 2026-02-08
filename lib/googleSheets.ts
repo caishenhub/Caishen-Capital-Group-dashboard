@@ -31,15 +31,10 @@ const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4B
 const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7yRPTdP84d1QGxsQejGF2dQj5M9VFSSZBiDsSwsMsNRIGUjY5wXFgJDOjMQ/exec';
 const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
 
-// Sistema de caché en memoria para pre-fetching
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
-// Registro de peticiones en curso para evitar duplicidad
 const inFlightRequests: Record<string, Promise<any[]>> = {};
-const CACHE_DURATION = 1000 * 60 * 5; // 5 minutos
+const CACHE_DURATION = 1000 * 60 * 5;
 
-/**
- * Normaliza un string para comparaciones robustas.
- */
 export const norm = (str: any): string => 
   String(str || '')
     .trim()
@@ -64,11 +59,10 @@ export function parseSheetNumber(val: any): number {
 }
 
 /**
- * Obtiene datos con soporte de caché y deduplicación de peticiones.
- * Optimizada para Vercel eliminando headers que disparan pre-flight CORS.
+ * Motor de sincronización ultraligero.
+ * No utiliza headers personalizados para evitar bloqueos CORS en Vercel.
  */
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
-  // 1. Verificar si ya tenemos los datos en caché válida
   if (!ignoreCache && prefetchCache[tabName]) {
     const cached = prefetchCache[tabName];
     if (Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -76,45 +70,44 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
     }
   }
 
-  // 2. Verificar si ya hay una petición IDÉNTICA en curso
   if (inFlightRequests[tabName]) {
     return inFlightRequests[tabName];
   }
 
-  // 3. Crear la nueva petición y registrarla como "en vuelo"
   const fetchPromise = (async () => {
-    try {
-      const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&t=${Date.now()}`;
-      
-      // Simplificamos la petición: eliminamos headers personalizados
-      // Esto evita que el navegador haga un OPTIONS request que Google Script no maneja bien.
-      const response = await fetch(url);
-      
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      
-      const json = await response.json();
-      const rows = Array.isArray(json) ? json : (json.rows || []);
-      
-      const processedData = rows.map((row: any) => {
-        const cleanRow: any = {};
-        Object.keys(row).forEach(key => {
-          cleanRow[key.trim()] = row[key];
+    // Reintentos automáticos (máximo 2) para estabilidad
+    for (let i = 0; i < 2; i++) {
+      try {
+        const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
+        
+        // Petición minimalista: Sin cabeceras, permitiendo redirecciones (default)
+        const response = await fetch(url, { method: 'GET' });
+        
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
+        
+        const json = await response.json();
+        const rows = Array.isArray(json) ? json : (json.rows || []);
+        
+        const processedData = rows.map((row: any) => {
+          const cleanRow: any = {};
+          Object.keys(row).forEach(key => {
+            cleanRow[key.trim()] = row[key];
+          });
+          return cleanRow;
         });
-        return cleanRow;
-      });
 
-      // Guardar en caché para futuras consultas rápidas
-      prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
-      
-      return processedData;
-    } catch (e) {
-      console.error(`Error en sincronización (${tabName}):`, e);
-      // Si falla, devolvemos caché vieja si existe, o array vacío
-      return prefetchCache[tabName]?.data || [];
-    } finally {
-      // Limpiar el registro de peticiones en vuelo al terminar
-      delete inFlightRequests[tabName];
+        prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+        return processedData;
+      } catch (e) {
+        if (i === 1) { // Último intento fallido
+          console.error(`Error persistente cargando ${tabName}:`, e);
+          return prefetchCache[tabName]?.data || [];
+        }
+        // Esperar 500ms antes del reintento
+        await new Promise(r => setTimeout(r, 500));
+      }
     }
+    return [];
   })();
 
   inFlightRequests[tabName] = fetchPromise;
@@ -128,12 +121,11 @@ export async function updateTableData(tabName: string, data: any): Promise<{succ
       method: 'POST',
       mode: 'no-cors',
       cache: 'no-cache',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    return { success: true, message: "Datos sincronizados con la nube." };
+    return { success: true, message: "Petición enviada." };
   } catch (e) {
-    return { success: false, message: "Error de conexión con el servidor central." };
+    return { success: false, message: "Error de red." };
   }
 }
 
@@ -184,12 +176,15 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
     }
 
     const fetchFunc = async (tab: string) => {
-      const url = `${targetUrl}?tab=${tab}&t=${Date.now()}`;
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const j = await res.json();
-      const rows = Array.isArray(j) ? j : (j.rows || []);
-      return rows;
+      try {
+        const url = `${targetUrl}?tab=${tab}&t=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const j = await res.json();
+        return Array.isArray(j) ? j : (j.rows || []);
+      } catch (e) {
+        return [];
+      }
     };
 
     const [rawOpen, rawClosed] = await Promise.all([fetchFunc(openTab), fetchFunc(closedTab)]);
