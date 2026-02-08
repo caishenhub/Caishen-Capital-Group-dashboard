@@ -13,8 +13,37 @@ import FinancialControl from './components/Admin/FinancialControl';
 import ExecutionLogs from './components/ExecutionLogs/ExecutionLogs';
 import AuthGate from './components/Auth/AuthGate'; 
 import MobileNav from './components/MobileNav';
-import { supabase } from './lib/supabase';
-import { Cloud, CloudOff } from 'lucide-react';
+import { Cloud, CloudOff, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { GOOGLE_CONFIG } from './constants';
+import { checkConnection } from './lib/googleSheets';
+
+const MissingUrlAlert = () => (
+  <div className="fixed inset-0 z-[10000] bg-accent flex items-center justify-center p-6 text-center">
+    <div className="max-w-md w-full bg-white rounded-[40px] p-10 space-y-8 animate-in zoom-in duration-500">
+      <div className="mx-auto size-24 bg-red-50 rounded-3xl flex items-center justify-center text-red-600 shadow-xl border border-red-100">
+        <ShieldAlert size={48} />
+      </div>
+      <div className="space-y-3">
+        <h1 className="text-2xl font-black text-accent tracking-tighter uppercase">Error de Configuración</h1>
+        <p className="text-sm font-medium text-text-secondary leading-relaxed uppercase tracking-widest">
+          Falta configurar el motor de datos institucional (APPS_SCRIPT_URL).
+        </p>
+      </div>
+      <div className="bg-surface-subtle p-5 rounded-2xl border border-surface-border text-left">
+        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Instrucciones:</p>
+        <p className="text-[11px] font-bold text-accent leading-relaxed">
+          Por favor, asigne la URL de su macro de Google en el archivo <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">constants.tsx</code> para activar el portal.
+        </p>
+      </div>
+      <button 
+        onClick={() => window.location.reload()}
+        className="w-full bg-accent text-primary font-black py-5 rounded-2xl uppercase text-xs tracking-[0.2em] shadow-xl active:scale-95 transition-all"
+      >
+        Reintentar Conexión
+      </button>
+    </div>
+  </div>
+);
 
 const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ children, title }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -35,17 +64,16 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
     window.addEventListener('finance_update', handleUpdate);
     
     const testConnection = async () => {
-      try {
-        if (supabase) {
-          setIsCloudConnected(true);
-        }
-      } catch (e) {
-        setIsCloudConnected(false);
-      }
+      const isOk = await checkConnection();
+      setIsCloudConnected(isOk);
     };
     testConnection();
+    const interval = setInterval(testConnection, 30000); // Check cada 30s
 
-    return () => window.removeEventListener('finance_update', handleUpdate);
+    return () => {
+      window.removeEventListener('finance_update', handleUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -56,7 +84,7 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
         }`}>
           {isCloudConnected ? <Cloud size={14} className="animate-pulse" /> : <CloudOff size={14} />}
           <span className="text-[9px] font-black uppercase tracking-widest">
-            {isCloudConnected ? 'Cloud Sync' : 'Offline'}
+            {isCloudConnected ? 'Ledger Sync' : 'Reconnecting...'}
           </span>
         </div>
       </div>
@@ -82,6 +110,13 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
 };
 
 const App: React.FC = () => {
+  // Verificación de URL de Apps Script
+  const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20;
+
+  if (isConfigMissing) {
+    return <MissingUrlAlert />;
+  }
+
   return (
     <Router>
       <AuthGate>
@@ -91,7 +126,7 @@ const App: React.FC = () => {
           <Route path="/portfolio" element={<Layout title="Mi Portafolio"><Portfolio /></Layout>} />
           <Route path="/executions" element={<Layout title="Libro de Ejecuciones"><ExecutionLogs /></Layout>} />
           <Route path="/summary" element={<Layout title="Resumen Ejecutivo"><ExecutiveSummary /></Layout>} />
-          <Route path="/reports" element={<Layout title="Reportes Administrativos"><Reports /></Layout>} />
+          <Route path="/reports" element={<Layout title="Reportes Administrativos"><Reports /></Route>} />
           <Route path="/support" element={<Layout title="Soporte y Ayuda"><Support /></Layout>} />
           <Route path="/admin/finance" element={<Layout title="Control Financiero"><FinancialControl /></Layout>} />
           <Route path="*" element={<Navigate to="/" replace />} />

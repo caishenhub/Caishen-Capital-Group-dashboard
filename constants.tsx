@@ -1,6 +1,5 @@
 
 import { Asset, Transaction, Report, User, CorporateNotice, AdminNotification } from './types';
-import { supabase } from './lib/supabase';
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {

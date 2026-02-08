@@ -59,10 +59,27 @@ export function parseSheetNumber(val: any): number {
 }
 
 /**
+ * Verifica si el endpoint de Google Apps Script está respondiendo.
+ */
+export async function checkConnection(): Promise<boolean> {
+  if (!GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20) return false;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=PING`, { signal: controller.signal });
+    clearTimeout(timeout);
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
  * Motor de sincronización ultraligero.
- * No utiliza headers personalizados para evitar bloqueos CORS en Vercel.
  */
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
+  if (!GOOGLE_CONFIG.SCRIPT_API_URL) return [];
+
   if (!ignoreCache && prefetchCache[tabName]) {
     const cached = prefetchCache[tabName];
     if (Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -75,12 +92,9 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   }
 
   const fetchPromise = (async () => {
-    // Reintentos automáticos (máximo 2) para estabilidad
     for (let i = 0; i < 2; i++) {
       try {
         const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
-        
-        // Petición minimalista: Sin cabeceras, permitiendo redirecciones (default)
         const response = await fetch(url, { method: 'GET' });
         
         if (!response.ok) throw new Error(`Status: ${response.status}`);
@@ -99,11 +113,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
         prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
         return processedData;
       } catch (e) {
-        if (i === 1) { // Último intento fallido
-          console.error(`Error persistente cargando ${tabName}:`, e);
-          return prefetchCache[tabName]?.data || [];
-        }
-        // Esperar 500ms antes del reintento
+        if (i === 1) return prefetchCache[tabName]?.data || [];
         await new Promise(r => setTimeout(r, 500));
       }
     }
