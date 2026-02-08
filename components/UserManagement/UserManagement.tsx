@@ -107,8 +107,15 @@ const UserManagement: React.FC = () => {
     setError(false);
   };
 
-  const handleVerifyPin = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const addDigit = (digit: string) => {
+    if (pin.length < 4) setPin(prev => prev + digit);
+  };
+
+  const removeDigit = () => {
+    setPin(prev => prev.slice(0, -1));
+  };
+
+  const handleVerifyPin = () => {
     if (pendingUser && pin === pendingUser.pin) {
       setSelectedUser(pendingUser);
       setIsVerifying(false);
@@ -120,6 +127,19 @@ const UserManagement: React.FC = () => {
       setTimeout(() => setError(false), 2000);
     }
   };
+
+  // Keyboard support for the modal
+  useEffect(() => {
+    if (!isVerifying) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) addDigit(e.key);
+      else if (e.key === 'Backspace') removeDigit();
+      else if (e.key === 'Enter' && pin.length === 4) handleVerifyPin();
+      else if (e.key === 'Escape') setIsVerifying(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVerifying, pin, pendingUser]);
 
   const maskEmail = (email: string) => {
     if (!email.includes('@')) return '---';
@@ -304,63 +324,83 @@ const UserManagement: React.FC = () => {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsVerifying(false)} />
           <div className={`relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20 ${error ? 'animate-bounce' : ''}`}>
-            <div className="p-10 text-center space-y-8">
-              <div className="mx-auto size-20 bg-accent rounded-[24px] flex items-center justify-center text-primary shadow-2xl border border-primary/20">
+            
+            <button 
+              onClick={() => setIsVerifying(false)}
+              className="absolute top-6 right-6 p-2 text-text-muted hover:bg-gray-100 rounded-full transition-all"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="p-10 text-center">
+              <div className="mx-auto size-20 bg-accent rounded-[24px] flex items-center justify-center text-primary shadow-2xl border border-primary/20 mb-6">
                 <ShieldCheck size={40} />
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 mb-8">
                 <h3 className="text-2xl font-black text-accent tracking-tighter uppercase">Verificación Privada</h3>
-                <p className="text-xs text-text-secondary font-medium px-4 leading-relaxed">
-                  Confirma la credencial única de acceso asignada a <span className="font-bold text-accent">{pendingUser?.name}</span>.
+                <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">
+                  Código de acceso para <span className="text-accent">{pendingUser?.name}</span>
                 </p>
               </div>
 
-              <div className="space-y-6">
-                {/* PIN Display - Sistema de Cajas Independientes */}
-                <div className="flex justify-center gap-3">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div 
-                      key={i} 
-                      className={`size-14 rounded-2xl border-2 flex items-center justify-center transition-all ${
-                        pin.length > i ? 'border-primary bg-primary/5 shadow-sm' : 'border-surface-border'
-                      } ${error ? 'border-red-500 bg-red-50' : ''}`}
-                    >
-                      {pin.length > i && (
-                        <div className="size-3 bg-accent rounded-full animate-in zoom-in" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="relative group">
-                  <input 
-                    autoFocus
-                    type="password"
-                    maxLength={4}
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                    onKeyDown={(e) => e.key === 'Enter' && pin.length === 4 && handleVerifyPin()}
-                    className="absolute inset-0 opacity-0 cursor-default"
-                  />
-                  {error && (
-                    <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-red-600 uppercase tracking-widest animate-in slide-in-from-top-1">
-                      <AlertCircle size={14} />
-                      <span>PIN Incorrecto</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-6 grid grid-cols-2 gap-4">
-                  <button type="button" onClick={() => setIsVerifying(false)} className="px-6 py-4 rounded-2xl text-xs font-black text-text-muted hover:bg-gray-100 transition-all uppercase tracking-widest">Cancelar</button>
-                  <button 
-                    onClick={() => handleVerifyPin()}
-                    disabled={pin.length < 4}
-                    className="px-6 py-4 rounded-2xl bg-accent text-primary font-black text-xs uppercase tracking-widest shadow-xl hover:shadow-primary/20 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-50"
+              {/* PIN Display */}
+              <div className="flex justify-center gap-3 mb-10">
+                {[0, 1, 2, 3].map((i) => (
+                  <div 
+                    key={i} 
+                    className={`size-14 rounded-2xl border-2 flex items-center justify-center transition-all ${
+                      pin.length > i ? 'border-primary bg-primary/5 shadow-sm' : 'border-surface-border'
+                    } ${error ? 'border-red-500 bg-red-50' : ''}`}
                   >
-                    Autorizar
-                  </button>
-                </div>
+                    {pin.length > i && (
+                      <div className="size-3 bg-accent rounded-full animate-in zoom-in" />
+                    )}
+                  </div>
+                ))}
               </div>
+
+              {/* Numeric Keypad for Mobile/Touch Support */}
+              <div className="grid grid-cols-3 gap-3 w-full mb-8">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => addDigit(num.toString())}
+                    className="h-16 rounded-2xl bg-surface-subtle text-accent font-black text-xl hover:bg-primary transition-all active:scale-95 shadow-sm"
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button
+                  onClick={removeDigit}
+                  className="h-16 rounded-2xl bg-red-50 text-red-600 font-black text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all active:scale-95 shadow-sm"
+                >
+                  Borrar
+                </button>
+                <button
+                  onClick={() => addDigit('0')}
+                  className="h-16 rounded-2xl bg-surface-subtle text-accent font-black text-xl hover:bg-primary transition-all active:scale-95 shadow-sm"
+                >
+                  0
+                </button>
+                <button
+                  onClick={handleVerifyPin}
+                  disabled={pin.length !== 4}
+                  className={`h-16 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm flex items-center justify-center ${
+                    pin.length === 4 
+                    ? 'bg-accent text-primary' 
+                    : 'bg-surface-subtle text-text-muted opacity-50'
+                  }`}
+                >
+                  OK
+                </button>
+              </div>
+
+              {error && (
+                <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-red-600 uppercase tracking-widest animate-in slide-in-from-top-1">
+                  <AlertCircle size={14} />
+                  <span>PIN Incorrecto</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
