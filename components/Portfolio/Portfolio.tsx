@@ -49,7 +49,6 @@ const Portfolio: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
 
@@ -129,8 +128,8 @@ const Portfolio: React.FC = () => {
     <div className="p-4 md:p-10 space-y-8 md:space-y-12 animate-in fade-in duration-700 max-w-[1800px] mx-auto">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h1 className="text-[#1d1c2d] text-3xl md:text-5xl font-black tracking-tighter mb-1 uppercase">Portfolio Global</h1>
-          <p className="text-text-secondary text-xs md:text-lg font-medium">Gestión institucional de activos y exposición de capital.</p>
+          <h1 className="text-[#1d1c2d] text-3xl md:text-5xl font-black tracking-tighter mb-1 uppercase leading-none">Portfolio Global</h1>
+          <p className="text-text-secondary text-xs md:text-lg font-medium mt-2">Gestión institucional de activos y exposición de capital.</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
@@ -141,14 +140,12 @@ const Portfolio: React.FC = () => {
         </button>
       </header>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {kpis.length > 0 ? kpis.map((kpi, i) => {
           const Icon = getKpiIcon(kpi.type);
           const isRiesgo = kpi.type === 'riesgo';
           const isExposicion = kpi.type === 'exposicion';
           
-          // Cálculo dinámico para subtexto de exposición (Ej: $234.6k)
           let displaySub = kpi.sub;
           if (isExposicion && globalAum > 0) {
             const pctVal = parseSheetNumber(kpi.value);
@@ -179,9 +176,7 @@ const Portfolio: React.FC = () => {
         ))}
       </div>
 
-      {/* Main Content Layout */}
       <div className="space-y-8">
-        {/* Managed Assets Section */}
         <div className="bg-white rounded-[50px] border border-surface-border p-8 md:p-14 shadow-premium">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
             <div className="flex items-center gap-4">
@@ -233,7 +228,6 @@ const Portfolio: React.FC = () => {
           </div>
         </div>
 
-        {/* Structural Resilience */}
         <div className="bg-[#1d1c2d] rounded-[40px] p-8 md:p-10 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none translate-x-1/4 -translate-y-1/4">
                <ShieldCheck size={200} />
@@ -258,7 +252,6 @@ const Portfolio: React.FC = () => {
              </div>
         </div>
 
-        {/* Operations Ledger */}
         <div className="space-y-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-4">
@@ -315,13 +308,20 @@ const Portfolio: React.FC = () => {
                     className="w-full pl-14 pr-6 py-4 bg-white border border-surface-border rounded-2xl text-[12px] font-black text-[#1d1c2d] focus:ring-[#ceff04] focus:border-[#ceff04] transition-all"
                   />
                 </div>
+                
+                {/* Botón de sincronización actualizado estilo Live Ledger */}
                 <button 
                   onClick={() => syncExecData(activeMarket)}
                   disabled={isLoading}
-                  className="flex items-center justify-center gap-4 px-10 py-4 bg-[#1d1c2d] text-white rounded-2xl hover:bg-black transition-all disabled:opacity-50 active:scale-95"
+                  className="flex items-center justify-center gap-2 px-8 py-4 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
                 >
-                  <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-                  <span className="text-[11px] font-black uppercase tracking-widest">Sync</span>
+                  <div className="relative flex size-2">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${isLoading ? 'duration-300' : 'duration-1000'}`}></span>
+                    <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                    {isLoading ? 'Sincronizando...' : 'Live Ledger'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -381,7 +381,6 @@ const Portfolio: React.FC = () => {
               )}
             </div>
 
-            {/* Pagination Controls */}
             {filteredExecData.length > 0 && (
               <div className="p-8 border-t border-surface-border bg-white flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="text-[11px] font-black text-[#9ca3af] uppercase tracking-[0.2em]">

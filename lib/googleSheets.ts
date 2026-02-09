@@ -1,5 +1,6 @@
 
-import { GOOGLE_CONFIG } from '../constants';
+import { GOOGLE_CONFIG, MOCK_REPORTS } from '../constants';
+import { Report, ReportSection } from '../types';
 
 export interface Execution {
   ticket: string;
@@ -35,7 +36,16 @@ export interface PortfolioKpi {
   label: string;
   value: string;
   sub: string;
-  type: 'diversificacion' | 'exposicion' | 'riesgo';
+  type: 'diversificacion' | 'exposicion' | 'riesgo' | 'ajuste' | 'estabilidad' | 'balance' | 'utilidad';
+}
+
+export interface RiskEvent {
+  id: string;
+  name: string;
+  probability: number;
+  impact: number;
+  level: 'Bajo' | 'Medio' | 'Alto' | 'Crítico';
+  category: string;
 }
 
 export type MarketCategory = 'forex' | 'stocks' | 'commodities';
@@ -87,6 +97,11 @@ export async function checkConnection(): Promise<boolean> {
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!GOOGLE_CONFIG.SCRIPT_API_URL) return [];
 
+  if (ignoreCache) {
+    delete prefetchCache[tabName];
+    delete inFlightRequests[tabName];
+  }
+
   if (!ignoreCache && prefetchCache[tabName]) {
     const cached = prefetchCache[tabName];
     if (Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -99,36 +114,133 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   }
 
   const fetchPromise = (async () => {
-    for (let i = 0; i < 2; i++) {
-      try {
-        const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
-        const response = await fetch(url, { method: 'GET' });
-        
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-        
-        const json = await response.json();
-        const rows = Array.isArray(json) ? json : (json.rows || []);
-        
-        const processedData = rows.map((row: any) => {
-          const cleanRow: any = {};
-          Object.keys(row).forEach(key => {
-            cleanRow[key.trim()] = row[key];
+    try {
+      for (let i = 0; i < 2; i++) {
+        try {
+          const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
+          const response = await fetch(url, { method: 'GET' });
+          
+          if (!response.ok) throw new Error(`Status: ${response.status}`);
+          
+          const json = await response.json();
+          const rows = Array.isArray(json) ? json : (json.rows || []);
+          
+          const processedData = rows.map((row: any) => {
+            const cleanRow: any = {};
+            Object.keys(row).forEach(key => {
+              cleanRow[key.trim()] = row[key];
+            });
+            return cleanRow;
           });
-          return cleanRow;
-        });
 
-        prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
-        return processedData;
-      } catch (e) {
-        if (i === 1) return prefetchCache[tabName]?.data || [];
-        await new Promise(r => setTimeout(r, 500));
+          prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+          return processedData;
+        } catch (e) {
+          if (i === 1) throw e;
+          await new Promise(r => setTimeout(r, 500));
+        }
       }
+      return [];
+    } catch (err) {
+      console.error(`Error fetching ${tabName}:`, err);
+      return prefetchCache[tabName]?.data || [];
+    } finally {
+      delete inFlightRequests[tabName];
     }
-    return [];
   })();
 
   inFlightRequests[tabName] = fetchPromise;
   return fetchPromise;
+}
+
+/**
+ * Normaliza las secciones del reporte intentando reparar JSONs truncados
+ * o fallando hacia un formato de texto plano si el error persiste.
+ */
+function normalizeSections(rawJson: string): ReportSection[] {
+  if (!rawJson || rawJson.trim() === '') return [];
+  
+  let sanitized = rawJson.trim();
+  
+  try {
+    // Intento de parseo estándar
+    const parsed = JSON.parse(sanitized);
+    if (!Array.isArray(parsed)) return [];
+    
+    return parsed.map(s => ({
+      titulo: s.titulo || s.title || 'Sección',
+      parrafos: Array.isArray(s.parrafos) ? s.parrafos : (s.content ? [s.content] : []),
+      items: Array.isArray(s.items) ? s.items : []
+    }));
+  } catch (e) {
+    console.warn("Error al parsear SECCIONES_JSON, aplicando recuperación básica:", e);
+    
+    // Fallback: Si el JSON está roto (truncado), intentamos mostrar el texto como un párrafo único
+    // para no perder la información administrativa.
+    return [{
+      titulo: 'Contenido del Comunicado',
+      parrafos: [sanitized.replace(/[\[\]\{\}"\\]/g, ' ').trim()],
+      items: []
+    }];
+  }
+}
+
+function formatSheetDate(dateVal: any): string {
+  if (!dateVal) return '';
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return String(dateVal);
+  
+  return date.toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).replace('.', '');
+}
+
+export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> {
+  try {
+    const data = await fetchTableData('REPORTES_ADMIN', ignoreCache);
+    
+    if (!data || data.length === 0) return MOCK_REPORTS;
+
+    const reports: Report[] = data
+      .filter(row => norm(findValue(row, ['STATUS', 'status'])) === 'publicado')
+      .map(row => {
+        const sectionsJson = String(findValue(row, ['SECCIONES_JSON', 'secciones_json']) || '');
+        const sections = normalizeSections(sectionsJson);
+
+        return {
+          id: String(findValue(row, ['ID_REPORTE', 'id']) || Math.random().toString()),
+          title: String(findValue(row, ['TITULO', 'title']) || 'Reporte Institucional'),
+          date: formatSheetDate(findValue(row, ['FECHA_PUBLICACION', 'date'])),
+          category: String(findValue(row, ['CATEGORIA', 'category']) || 'General') as any,
+          summary: String(findValue(row, ['DESCRIPCION_CORTA', 'summary']) || ''),
+          highlight: String(findValue(row, ['TEXTO_DESTACADO', 'highlight']) || ''),
+          sections: sections,
+          notaImportante: String(findValue(row, ['NOTA_IMPORTANTE', 'note']) || ''),
+          visibleEnTodos: norm(findValue(row, ['VISIBLE_EN_TODOS', 'visible'])) === 'si',
+          ordenForzado: parseSheetNumber(findValue(row, ['ORDEN_FORZADO', 'order'])),
+          updatedAt: String(findValue(row, ['UPDATED_AT', 'updated']) || ''),
+          color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || '')
+        };
+      });
+
+    return reports.sort((a, b) => {
+      if ((b.ordenForzado || 0) !== (a.ordenForzado || 0)) {
+        return (b.ordenForzado || 0) - (a.ordenForzado || 0);
+      }
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      const updateA = new Date(a.updatedAt || '').getTime();
+      const updateB = new Date(b.updatedAt || '').getTime();
+      return updateB - updateA;
+    });
+
+  } catch (error) {
+    console.error("Error en fetchReportsAdmin:", error);
+    return MOCK_REPORTS;
+  }
 }
 
 export async function fetchPortfolioStructure(): Promise<PortfolioCategory[]> {
@@ -137,6 +249,36 @@ export async function fetchPortfolioStructure(): Promise<PortfolioCategory[]> {
     name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
     value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'pct', 'porcentaje'])),
     color: String(findValue(item, ['COLOR', 'color', 'hex']) || '#9CA3AF')
+  }));
+}
+
+export async function fetchLiquidityMatrix(): Promise<PortfolioCategory[]> {
+  const data = await fetchTableData('MATRIZ_LIQUIDEZ');
+  return data.map(item => ({
+    name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
+    value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'pct', 'porcentaje'])),
+    color: String(findValue(item, ['COLOR', 'color', 'hex']) || '#9CA3AF')
+  }));
+}
+
+export async function fetchOperativeDistribution(): Promise<PortfolioCategory[]> {
+  const data = await fetchTableData('DISTRIBUCION_OPERATIVA');
+  return data.map(item => ({
+    name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
+    value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'pct', 'porcentaje'])),
+    color: String(findValue(item, ['COLOR', 'color', 'hex']) || '#9CA3AF')
+  }));
+}
+
+export async function fetchRiskMatrixData(): Promise<RiskEvent[]> {
+  const data = await fetchTableData('MATRIZ_RIESGO');
+  return data.map((item, idx) => ({
+    id: String(findValue(item, ['ID', 'id']) || `risk-${idx}`),
+    name: String(findValue(item, ['EVENTO', 'name', 'evento']) || 'Riesgo Desconocido'),
+    probability: parseSheetNumber(findValue(item, ['PROBABILIDAD', 'probability'])),
+    impact: parseSheetNumber(findValue(item, ['IMPACTO', 'impact'])),
+    level: String(findValue(item, ['NIVEL', 'level']) || 'Medio') as any,
+    category: String(findValue(item, ['CATEGORIA', 'category']) || 'General')
   }));
 }
 
@@ -149,9 +291,7 @@ export async function fetchPortfolioKpis(): Promise<PortfolioKpi[]> {
     
     let displayValue = String(rawVal || '---');
     
-    // Forzar porcentaje si el tipo es exposición o diversificación
     if (numVal !== 0 && (type === 'exposicion' || type === 'diversificacion')) {
-      // Si viene como decimal (0.309) multiplicamos por 100
       const pctValue = Math.abs(numVal) < 1 ? numVal * 100 : numVal;
       displayValue = pctValue.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + '%';
     } else if (typeof rawVal === 'number' && rawVal > 1) {

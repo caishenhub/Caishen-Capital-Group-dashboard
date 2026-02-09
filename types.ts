@@ -20,9 +20,10 @@ export interface Transaction {
 }
 
 export interface ReportSection {
-  title: string;
-  content: string;
+  titulo: string;
+  parrafos?: string[];
   items?: string[];
+  content?: string; // Fallback para compatibilidad
 }
 
 export interface Report {
@@ -33,6 +34,11 @@ export interface Report {
   summary: string;
   highlight?: string;
   sections?: ReportSection[];
+  notaImportante?: string;
+  visibleEnTodos?: boolean;
+  ordenForzado?: number;
+  updatedAt?: string;
+  color?: string; // Nuevo campo para color personalizado
 }
 
 export interface CorporateNotice {
