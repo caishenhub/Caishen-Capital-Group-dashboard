@@ -268,7 +268,7 @@ const ExecutiveSummary: React.FC = () => {
 
       {/* Grid de Avisos y Protocolos de Liquidez */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 scroll-mt-24">
-        {/* COMUNICADOS INSTITUCIONALES */}
+        {/* AVISOS CORPORATIVOS */}
         <div id="seccion-avisos" className="bg-white rounded-[50px] p-8 md:p-12 border border-surface-border shadow-premium flex flex-col min-h-[600px] relative overflow-hidden">
           <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 shrink-0 relative z-10">
             <div className="flex items-center gap-4">
@@ -282,7 +282,7 @@ const ExecutiveSummary: React.FC = () => {
                 )}
               </div>
               <h3 className="text-accent text-xl font-black uppercase tracking-widest leading-none">
-                Comunicados ({liveNotices.length})
+                Avisos Corporativos ({liveNotices.length})
               </h3>
             </div>
             
@@ -335,7 +335,13 @@ const ExecutiveSummary: React.FC = () => {
                       </div>
                     )}
                     <div className="flex pt-1">
-                      <button className="text-accent text-[10px] font-black uppercase tracking-widest border-b-2 border-primary pb-0.5 group-hover:border-accent transition-all">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNoticeClick(notice);
+                        }}
+                        className="text-accent text-[10px] font-black uppercase tracking-widest border-b-2 border-primary pb-0.5 group-hover:border-accent transition-all"
+                      >
                         Consultar Documento
                       </button>
                     </div>
@@ -389,7 +395,6 @@ const ExecutiveSummary: React.FC = () => {
       {/* MATRIZ ESTRATÉGICA DETALLADA */}
       <div className="bg-white rounded-[40px] border border-surface-border p-6 lg:p-10 shadow-premium overflow-hidden">
         <div className="flex flex-col space-y-6">
-          {/* Cabecera del Análisis */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-gray-50 pb-5">
             <div className="space-y-1">
               <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em]">Caishen Intelligence Hub</p>
@@ -410,14 +415,12 @@ const ExecutiveSummary: React.FC = () => {
             </div>
           </div>
 
-          {/* Contenido Principal */}
           <div className="max-w-none">
             <div className="text-text-secondary text-base md:text-lg leading-relaxed font-medium whitespace-pre-wrap text-justify">
               {strategicPreview?.contenido || 'Cargando análisis institucional...'}
             </div>
           </div>
 
-          {/* Footer del Análisis */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-gray-50">
             <div className="flex items-center gap-3 text-text-muted">
               <Info size={14} className="text-primary" />
@@ -433,7 +436,42 @@ const ExecutiveSummary: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* ... modales y otros elementos se mantienen igual ... */}
+
+      {/* MODALES DE DETALLE */}
+      {selectedNotice && (
+        <NoticeModal notice={selectedNotice} onClose={() => setSelectedNotice(null)} />
+      )}
+      
+      {showDetailedReport && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-accent/80 backdrop-blur-2xl animate-in fade-in duration-300" onClick={() => setShowDetailedReport(false)} />
+          <div className="relative w-full max-w-5xl max-h-[95vh] bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
+            <header className="p-8 md:p-10 border-b border-surface-border flex justify-between items-center bg-white shrink-0">
+              <div className="flex items-center gap-4 md:gap-6">
+                <div className="p-3 md:p-4 bg-[#1d1c2d] rounded-[20px] md:rounded-[24px] text-[#ceff04] shadow-xl"><ShieldCheck size={28} /></div>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-black text-[#1d1c2d] tracking-tighter uppercase leading-none">Análisis Estratégico</h2>
+                  <p className="text-[10px] font-black text-[#9ca3af] uppercase tracking-widest mt-1">Intelligence Verification v4.2</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDetailedReport(false)} className="p-3 hover:bg-[#f8f9fa] rounded-full transition-all text-[#9ca3af] hover:text-[#1d1c2d]">
+                <X size={24} />
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto p-8 md:p-16 scroll-smooth hide-scrollbar bg-white">
+              <DetailedOperationalReport />
+            </div>
+            <footer className="p-8 md:p-10 border-t border-surface-border bg-white flex justify-end shrink-0">
+              <button 
+                onClick={() => setShowDetailedReport(false)}
+                className="w-full md:w-auto bg-[#1d1c2d] text-[#ceff04] font-black px-12 py-4 rounded-[20px] hover:bg-black transition-all uppercase text-[10px] tracking-widest shadow-2xl active:scale-95"
+              >
+                Cerrar Informe
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
