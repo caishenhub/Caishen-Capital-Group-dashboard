@@ -69,18 +69,17 @@ const Reports: React.FC = () => {
           </p>
         </div>
         
-        {/* Nuevo botón estilo Live Ledger */}
         <button 
           onClick={() => loadReports(true)} 
           disabled={isLoading}
-          className="flex items-center gap-2 px-6 py-3 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer shrink-0"
+          className="flex items-center gap-3 px-5 py-3 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer shrink-0"
         >
-          <div className="relative flex size-2">
+          <div className="relative flex size-2.5">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${isLoading ? 'duration-300' : 'duration-1000'}`}></span>
-            <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
+            <span className="relative inline-flex rounded-full size-2.5 bg-primary shadow-[0_0_8px_rgba(206,255,4,0.6)]"></span>
           </div>
           <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-            {isLoading ? 'Sincronizando...' : 'Live Ledger'}
+            {isLoading ? 'Sincronizando...' : 'Nube Institucional'}
           </span>
         </button>
       </header>

@@ -7,7 +7,7 @@ import {
   Landmark, 
   Shield, 
   BarChart3, 
-  Fingerprint, 
+  Layers, 
   FileText, 
   X,
   Database,
@@ -117,7 +117,7 @@ const Portfolio: React.FC = () => {
 
   const getKpiIcon = (type: string) => {
     switch(type) {
-      case 'diversificacion': return Fingerprint;
+      case 'diversificacion': return Layers;
       case 'exposicion': return BarChart3;
       case 'riesgo': return Shield;
       default: return Activity;
@@ -140,6 +140,7 @@ const Portfolio: React.FC = () => {
         </button>
       </header>
 
+      {/* TARJETAS KPI CON DISEÑO UNIFICADO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {kpis.length > 0 ? kpis.map((kpi, i) => {
           const Icon = getKpiIcon(kpi.type);
@@ -157,11 +158,11 @@ const Portfolio: React.FC = () => {
             <div key={i} className="bg-white border border-surface-border rounded-[40px] p-10 shadow-sm hover:shadow-premium hover:-translate-y-1 transition-all group">
               <div className="flex justify-between items-start mb-10">
                 <span className="text-[#9ca3af] text-[12px] font-black uppercase tracking-[0.2em]">{kpi.label}</span>
-                <div className="p-2 bg-surface-subtle rounded-xl group-hover:bg-[#1d1c2d] group-hover:text-white transition-colors">
-                  <Icon size={20} />
+                <div className="p-2.5 bg-primary rounded-xl shadow-sm">
+                  <Icon size={20} className="text-accent" />
                 </div>
               </div>
-              <h4 className={`text-5xl font-black tracking-tighter mb-2 ${isRiesgo ? 'text-[#ceff04] drop-shadow-[0_0_10px_rgba(206,255,4,0.3)]' : 'text-[#1d1c2d]'}`}>
+              <h4 className="text-5xl font-black tracking-tighter mb-2 text-[#1d1c2d]">
                 {kpi.value}
               </h4>
               <p className="text-[12px] font-black text-[#6b7280] uppercase tracking-[0.15em]">{displaySub}</p>
@@ -309,18 +310,17 @@ const Portfolio: React.FC = () => {
                   />
                 </div>
                 
-                {/* Botón de sincronización actualizado estilo Live Ledger */}
                 <button 
                   onClick={() => syncExecData(activeMarket)}
                   disabled={isLoading}
-                  className="flex items-center justify-center gap-2 px-8 py-4 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
+                  className="flex items-center gap-3 px-5 py-3 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
                 >
-                  <div className="relative flex size-2">
+                  <div className="relative flex size-2.5">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${isLoading ? 'duration-300' : 'duration-1000'}`}></span>
-                    <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
+                    <span className="relative inline-flex rounded-full size-2.5 bg-primary shadow-[0_0_8px_rgba(206,255,4,0.6)]"></span>
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-                    {isLoading ? 'Sincronizando...' : 'Live Ledger'}
+                    {isLoading ? 'Sincronizando...' : 'Nube Institucional'}
                   </span>
                 </button>
               </div>
@@ -450,7 +450,7 @@ const Portfolio: React.FC = () => {
                 onClick={() => setShowModal(false)}
                 className="bg-[#1d1c2d] text-[#ceff04] font-black px-16 py-5 rounded-[24px] hover:bg-black transition-all uppercase text-[11px] tracking-[0.3em] shadow-2xl active:scale-95"
               >
-                Cerrar Auditoría
+                Cerrar Informe
               </button>
             </footer>
           </div>

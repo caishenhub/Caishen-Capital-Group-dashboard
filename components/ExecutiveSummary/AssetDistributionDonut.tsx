@@ -1,30 +1,42 @@
+
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { FINANCE_CONFIG } from '../../constants';
+import { LiquidityItem } from '../../lib/googleSheets';
 
-const data = [
-  { name: 'Liquidez Inmediata', value: 80, color: '#ceff04' },
-  { name: 'Capital Estratégico', value: 20, color: '#1d1c2d' },
-];
+interface AssetDistributionDonutProps {
+  data: LiquidityItem[];
+  centerValue: string;
+}
 
-const AssetDistributionDonut: React.FC = () => {
+const AssetDistributionDonut: React.FC<AssetDistributionDonutProps> = ({ data, centerValue }) => {
+  // Fallback si no hay datos
+  const displayData = data.length > 0 ? data : [
+    { name: 'Sincronizando...', value: 100, color: '#2d2c3e', subtext: '' }
+  ];
+
   return (
-    <div className="h-64 w-full relative">
+    <div className="h-72 w-full relative flex items-center justify-center">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={displayData}
             cx="50%"
             cy="50%"
-            innerRadius={80}
-            outerRadius={105}
+            innerRadius={85}
+            outerRadius={110}
             paddingAngle={0}
             dataKey="value"
             animationDuration={1500}
             stroke="none"
+            startAngle={90}
+            endAngle={450}
           >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
+            {displayData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.color} 
+                style={{ filter: entry.color === '#ceff04' ? 'drop-shadow(0 0 12px rgba(206,255,4,0.4))' : 'none' }}
+              />
             ))}
           </Pie>
           <Tooltip 
@@ -34,11 +46,14 @@ const AssetDistributionDonut: React.FC = () => {
           />
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-text-muted text-[10px] font-black uppercase tracking-tighter">AUM Global</span>
-        <span className="text-accent text-3xl font-black tracking-tighter">
-          $124,400
+      
+      {/* TEXTO CENTRAL - CORRECCIÓN DE CONTRASTE */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-5px]">
+        <span className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mb-1">AUM GLOBAL</span>
+        <span className="text-white text-3xl font-black tracking-tighter leading-none">
+          {centerValue}
         </span>
+        <div className="h-1 w-8 bg-primary rounded-full mt-3 shadow-neon"></div>
       </div>
     </div>
   );

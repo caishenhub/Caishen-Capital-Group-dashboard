@@ -48,7 +48,7 @@ const Dashboard: React.FC = () => {
     try {
       const [configData, sociosData, performanceData, pData] = await Promise.all([
         fetchTableData('CONFIG_MAESTRA'),
-        fetchTableData('PADRON_SOCIOS'),
+        fetchTableData('LIBRO_ACCIONISTAS'),
         fetchTableData('HISTORIAL_RENDIMIENTOS'),
         fetchPortfolioStructure()
       ]);
@@ -156,42 +156,46 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-1000 max-w-full overflow-x-hidden">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-accent text-2xl md:text-4xl font-black tracking-tighter uppercase leading-tight mb-1">Estado del Fondo Global</h1>
-            
-            <button 
-              onClick={() => loadConfigs()}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 group cursor-pointer"
-            >
-              <div className="relative flex size-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${!isLoading ? 'duration-1000' : 'duration-300'}`}></span>
-                <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
-              </div>
-              <span className="text-[9px] font-black text-accent uppercase tracking-widest">
-                {isLoading ? 'Sincronizando...' : 'Live Ledger'}
-              </span>
-            </button>
-          </div>
-          <p className="text-text-secondary text-[11px] md:text-base font-medium">Cifras consolidadas de la institución al {currentDate}.</p>
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+        <div className="flex flex-col gap-2 flex-1">
+          <h1 className="text-accent text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-1">
+            Estado del Fondo Global
+          </h1>
+          <p className="text-text-secondary text-[11px] md:text-base font-medium">
+            Cifras consolidadas de la institución al {currentDate}.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar max-w-full">
-          <span className="shrink-0 pl-2 text-[9px] font-black text-text-muted uppercase tracking-widest">Periodo:</span>
-          <div className="flex gap-1 shrink-0">
-            {['General', 2022, 2023, 2024, 2025, 2026].map((p) => (
-              <button
-                key={p}
-                onClick={() => setSelectedPeriod(p as any)}
-                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-tight whitespace-nowrap ${
-                  selectedPeriod === p ? 'bg-accent text-primary shadow-md' : 'text-text-muted hover:bg-gray-50'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+        <div className="flex flex-col items-center md:items-end gap-4 shrink-0 self-center md:self-auto">
+          <button 
+            onClick={() => loadConfigs()}
+            disabled={isLoading}
+            className="flex items-center gap-4 px-8 py-3.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
+          >
+            <div className="relative flex size-3">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${isLoading ? 'duration-300' : 'duration-1000'}`}></span>
+              <span className="relative inline-flex rounded-full size-3 bg-primary shadow-[0_0_12px_rgba(206,255,4,0.8)]"></span>
+            </div>
+            <span className="text-[11px] font-black uppercase tracking-[0.25em] leading-none">
+              {isLoading ? 'Sincronizando...' : 'Nube Institucional'}
+            </span>
+          </button>
+
+          <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar max-w-full">
+            <span className="shrink-0 pl-3 text-[9px] font-black text-text-muted uppercase tracking-widest">Periodo:</span>
+            <div className="flex gap-1 shrink-0">
+              {['General', 2022, 2023, 2024, 2025, 2026].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setSelectedPeriod(p as any)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-tight whitespace-nowrap ${
+                    selectedPeriod === p ? 'bg-accent text-primary shadow-md' : 'text-text-muted hover:bg-gray-50'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

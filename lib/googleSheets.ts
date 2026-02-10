@@ -1,6 +1,6 @@
 
 import { GOOGLE_CONFIG, MOCK_REPORTS } from '../constants';
-import { Report, ReportSection } from '../types';
+import { Report, ReportSection, CorporateNotice } from '../types';
 
 export interface Execution {
   ticket: string;
@@ -32,6 +32,13 @@ export interface PortfolioCategory {
   color: string;
 }
 
+export interface LiquidityItem {
+  name: string;
+  value: number;
+  color: string;
+  subtext: string;
+}
+
 export interface PortfolioKpi {
   label: string;
   value: string;
@@ -39,13 +46,24 @@ export interface PortfolioKpi {
   type: 'diversificacion' | 'exposicion' | 'riesgo' | 'ajuste' | 'estabilidad' | 'balance' | 'utilidad';
 }
 
-export interface RiskEvent {
+export interface ExecutiveKpi {
   id: string;
-  name: string;
-  probability: number;
-  impact: number;
-  level: 'Bajo' | 'Medio' | 'Alto' | 'Crítico';
-  category: string;
+  titulo: string;
+  valor: string;
+  subtexto: string;
+  progreso: number;
+  tipo: 'moneda' | 'porcentaje' | 'texto';
+}
+
+export interface StrategicReportSection {
+  id: string;
+  seccion_id: string;
+  seccion_titulo: string;
+  subseccion_titulo: string;
+  contenido: string;
+  tipo: 'PREVIEW' | 'SELLO' | 'PORTADA' | 'SECCION' | 'CARD' | 'BLOQUE_OSCURO' | 'LISTA' | 'CONCLUSION' | 'FOOTER';
+  orden: number;
+  visible: boolean;
 }
 
 export type MarketCategory = 'forex' | 'stocks' | 'commodities';
@@ -54,9 +72,10 @@ const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4B
 const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7yRPTdP84d1QGxsQejGF2dQj5M9VFSSZBiDsSwsMsNRIGUjY5wXFgJDOjMQ/exec';
 const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
 
+// Sistema de Caché Persistente en Memoria
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
 const inFlightRequests: Record<string, Promise<any[]>> = {};
-const CACHE_DURATION = 1000 * 60 * 5;
+const CACHE_DURATION = 1000 * 60 * 10; // 10 minutos para datos estáticos
 
 export const norm = (str: any): string => 
   String(str || '')
@@ -81,11 +100,30 @@ export function parseSheetNumber(val: any): number {
   return isNaN(num) ? 0 : num;
 }
 
+function formatSheetDate(dateVal: any): string {
+  if (!dateVal) return '';
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) {
+    return String(dateVal).replace(/\./g, '');
+  }
+  return date.toLocaleDateString('es-ES', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric' 
+  }).replace(/\./g, '');
+}
+
+// Función para pre-cargar todas las tablas críticas al inicio
+export const warmUpCache = async () => {
+  const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO', 'KPI_PORTAFOLIO', 'ESTRUCTURA_PORTAFOLIO'];
+  return Promise.allSettled(tabs.map(tab => fetchTableData(tab)));
+};
+
 export async function checkConnection(): Promise<boolean> {
   if (!GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20) return false;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=PING`, { signal: controller.signal });
     clearTimeout(timeout);
     return res.ok;
@@ -97,50 +135,40 @@ export async function checkConnection(): Promise<boolean> {
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!GOOGLE_CONFIG.SCRIPT_API_URL) return [];
 
-  if (ignoreCache) {
-    delete prefetchCache[tabName];
-    delete inFlightRequests[tabName];
-  }
-
+  // 1. Prioridad Máxima: Devolver caché si existe para evitar spinners
   if (!ignoreCache && prefetchCache[tabName]) {
     const cached = prefetchCache[tabName];
+    // Si la caché es reciente, la devolvemos inmediatamente
     if (Date.now() - cached.timestamp < CACHE_DURATION) {
+      // Lanzamos una actualización silenciosa en segundo plano si ha pasado más de 1 min
+      if (Date.now() - cached.timestamp > 1000 * 60) {
+        refreshInBackground(tabName);
+      }
       return cached.data;
     }
   }
 
+  // 2. Si ya hay una petición igual volando, nos unimos a ella
   if (inFlightRequests[tabName]) {
     return inFlightRequests[tabName];
   }
 
   const fetchPromise = (async () => {
     try {
-      for (let i = 0; i < 2; i++) {
-        try {
-          const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
-          const response = await fetch(url, { method: 'GET' });
-          
-          if (!response.ok) throw new Error(`Status: ${response.status}`);
-          
-          const json = await response.json();
-          const rows = Array.isArray(json) ? json : (json.rows || []);
-          
-          const processedData = rows.map((row: any) => {
-            const cleanRow: any = {};
-            Object.keys(row).forEach(key => {
-              cleanRow[key.trim()] = row[key];
-            });
-            return cleanRow;
-          });
+      const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) throw new Error(`Status: ${response.status}`);
+      const json = await response.json();
+      const rows = Array.isArray(json) ? json : (json.rows || []);
+      
+      const processedData = rows.map((row: any) => {
+        const cleanRow: any = {};
+        Object.keys(row).forEach(key => { cleanRow[key.trim()] = row[key]; });
+        return cleanRow;
+      });
 
-          prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
-          return processedData;
-        } catch (e) {
-          if (i === 1) throw e;
-          await new Promise(r => setTimeout(r, 500));
-        }
-      }
-      return [];
+      prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+      return processedData;
     } catch (err) {
       console.error(`Error fetching ${tabName}:`, err);
       return prefetchCache[tabName]?.data || [];
@@ -153,30 +181,128 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   return fetchPromise;
 }
 
-/**
- * Normaliza las secciones del reporte intentando reparar JSONs truncados
- * o fallando hacia un formato de texto plano si el error persiste.
- */
+// Función interna para refrescar datos sin bloquear la UI
+async function refreshInBackground(tabName: string) {
+  if (inFlightRequests[tabName]) return;
+  try {
+    const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
+    const response = await fetch(url);
+    const json = await response.json();
+    const rows = Array.isArray(json) ? json : (json.rows || []);
+    const processedData = rows.map((row: any) => {
+      const cleanRow: any = {};
+      Object.keys(row).forEach(key => { cleanRow[key.trim()] = row[key]; });
+      return cleanRow;
+    });
+    prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+  } catch (e) {
+    // Falla silenciosa en background
+  }
+}
+
+export async function fetchStrategicReport(ignoreCache = false): Promise<StrategicReportSection[]> {
+  const data = await fetchTableData('REPORTE_ESTRATEGICO', ignoreCache);
+  return data
+    .map((row, idx) => ({
+      id: String(findValue(row, ['ID', 'id']) || idx),
+      seccion_id: String(findValue(row, ['SECCION_ID', 'seccion_id']) || ''),
+      seccion_titulo: String(findValue(row, ['SECCION_TITULO', 'seccion_titulo']) || ''),
+      subseccion_titulo: String(findValue(row, ['SUBSECCION_TITULO', 'subseccion_titulo']) || ''),
+      contenido: String(findValue(row, ['CONTENIDO', 'content', 'contenido']) || ''),
+      tipo: (findValue(row, ['TIPO', 'type', 'tipo']) || 'SECCION').toUpperCase() as any,
+      orden: parseSheetNumber(findValue(row, ['ORDEN', 'order', 'orden'])),
+      visible: String(findValue(row, ['VISIBLE', 'visible'])).toLowerCase() === 'true'
+    }))
+    .filter(s => s.visible)
+    .sort((a, b) => a.orden - b.orden);
+}
+
+export async function fetchExecutiveKpis(ignoreCache = false): Promise<Record<string, ExecutiveKpi>> {
+  const data = await fetchTableData('RESUMEN_KPI', ignoreCache);
+  const kpis: Record<string, ExecutiveKpi> = {};
+  data.forEach(row => {
+    const id = norm(findValue(row, ['ID', 'id']));
+    if (id) {
+      kpis[id] = {
+        id,
+        titulo: String(findValue(row, ['TITULO', 'titulo', 'label']) || ''),
+        valor: String(findValue(row, ['VALOR', 'valor', 'value']) || ''),
+        subtexto: String(findValue(row, ['SUBTEXTO', 'subtexto', 'sub']) || ''),
+        progreso: parseSheetNumber(findValue(row, ['PROGRESO', 'progreso', 'progress'])),
+        tipo: (findValue(row, ['TIPO', 'tipo', 'type']) || 'texto').toLowerCase() as any
+      };
+    }
+  });
+  return kpis;
+}
+
+export async function fetchLiquidityProtocol(ignoreCache = false): Promise<LiquidityItem[]> {
+  const data = await fetchTableData('PROTOCOLO_LIQUIDEZ', ignoreCache);
+  return data
+    .map(row => ({
+      name: String(findValue(row, ['CATEGORIA', 'name', 'categoria']) || 'Sin Nombre'),
+      value: parseSheetNumber(findValue(row, ['PORCENTAJE', 'value', 'porcentaje'])),
+      color: String(findValue(row, ['COLOR', 'color', 'hex']) || '#9CA3AF'),
+      subtext: String(findValue(row, ['SUBTEXTO', 'subtexto', 'subtext']) || ''),
+      orden: parseSheetNumber(findValue(row, ['ORDEN', 'order', 'orden']))
+    }))
+    .sort((a, b) => a.orden - b.orden);
+}
+
+export async function fetchCorporateNotices(ignoreCache = false): Promise<CorporateNotice[]> {
+  const data = await fetchTableData('AVISOS_CORPORATIVOS', ignoreCache);
+  return data.map((row, idx) => {
+    const rawDate = findValue(row, ['FECHA', 'date', 'fecha']);
+    return {
+      id: String(findValue(row, ['ID', 'id']) || `notice-${idx}`),
+      title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Aviso Corporativo'),
+      date: formatSheetDate(rawDate), 
+      description: String(findValue(row, ['DESCRIPCION', 'description', 'descripcion']) || ''),
+      type: (findValue(row, ['TIPO', 'type', 'tipo']) || 'Info') as any,
+      fullContent: String(findValue(row, ['CONTENIDO', 'content', 'contenido']) || ''),
+      imageUrl: String(findValue(row, ['IMAGEN', 'image', 'imagen', 'image_url']) || '')
+    };
+  }).reverse();
+}
+
+export async function publishNotice(notice: Partial<CorporateNotice>): Promise<{success: boolean}> {
+  const payload = {
+    action: 'append',
+    tab: 'AVISOS_CORPORATIVOS',
+    data: {
+      ID: `N-${Date.now()}`,
+      FECHA: new Date().toISOString(),
+      TITULO: notice.title,
+      DESCRIPCION: notice.description,
+      TIPO: notice.type || 'Info',
+      CONTENIDO: notice.fullContent || notice.description,
+      IMAGEN: notice.imageUrl || ''
+    }
+  };
+  try {
+    await fetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+    return { success: true };
+  } catch (e) {
+    return { success: false };
+  }
+}
+
 function normalizeSections(rawJson: string): ReportSection[] {
   if (!rawJson || rawJson.trim() === '') return [];
-  
   let sanitized = rawJson.trim();
-  
   try {
-    // Intento de parseo estándar
     const parsed = JSON.parse(sanitized);
     if (!Array.isArray(parsed)) return [];
-    
     return parsed.map(s => ({
       titulo: s.titulo || s.title || 'Sección',
       parrafos: Array.isArray(s.parrafos) ? s.parrafos : (s.content ? [s.content] : []),
       items: Array.isArray(s.items) ? s.items : []
     }));
   } catch (e) {
-    console.warn("Error al parsear SECCIONES_JSON, aplicando recuperación básica:", e);
-    
-    // Fallback: Si el JSON está roto (truncado), intentamos mostrar el texto como un párrafo único
-    // para no perder la información administrativa.
     return [{
       titulo: 'Contenido del Comunicado',
       parrafos: [sanitized.replace(/[\[\]\{\}"\\]/g, ' ').trim()],
@@ -185,30 +311,15 @@ function normalizeSections(rawJson: string): ReportSection[] {
   }
 }
 
-function formatSheetDate(dateVal: any): string {
-  if (!dateVal) return '';
-  const date = new Date(dateVal);
-  if (isNaN(date.getTime())) return String(dateVal);
-  
-  return date.toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  }).replace('.', '');
-}
-
 export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> {
   try {
     const data = await fetchTableData('REPORTES_ADMIN', ignoreCache);
-    
     if (!data || data.length === 0) return MOCK_REPORTS;
-
     const reports: Report[] = data
       .filter(row => norm(findValue(row, ['STATUS', 'status'])) === 'publicado')
       .map(row => {
         const sectionsJson = String(findValue(row, ['SECCIONES_JSON', 'secciones_json']) || '');
         const sections = normalizeSections(sectionsJson);
-
         return {
           id: String(findValue(row, ['ID_REPORTE', 'id']) || Math.random().toString()),
           title: String(findValue(row, ['TITULO', 'title']) || 'Reporte Institucional'),
@@ -224,11 +335,8 @@ export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> 
           color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || '')
         };
       });
-
     return reports.sort((a, b) => {
-      if ((b.ordenForzado || 0) !== (a.ordenForzado || 0)) {
-        return (b.ordenForzado || 0) - (a.ordenForzado || 0);
-      }
+      if ((b.ordenForzado || 0) !== (a.ordenForzado || 0)) return (b.ordenForzado || 0) - (a.ordenForzado || 0);
       const timeA = new Date(a.date).getTime();
       const timeB = new Date(b.date).getTime();
       if (timeB !== timeA) return timeB - timeA;
@@ -236,9 +344,7 @@ export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> 
       const updateB = new Date(b.updatedAt || '').getTime();
       return updateB - updateA;
     });
-
   } catch (error) {
-    console.error("Error en fetchReportsAdmin:", error);
     return MOCK_REPORTS;
   }
 }
@@ -252,52 +358,19 @@ export async function fetchPortfolioStructure(): Promise<PortfolioCategory[]> {
   }));
 }
 
-export async function fetchLiquidityMatrix(): Promise<PortfolioCategory[]> {
-  const data = await fetchTableData('MATRIZ_LIQUIDEZ');
-  return data.map(item => ({
-    name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
-    value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'pct', 'porcentaje'])),
-    color: String(findValue(item, ['COLOR', 'color', 'hex']) || '#9CA3AF')
-  }));
-}
-
-export async function fetchOperativeDistribution(): Promise<PortfolioCategory[]> {
-  const data = await fetchTableData('DISTRIBUCION_OPERATIVA');
-  return data.map(item => ({
-    name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
-    value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'pct', 'porcentaje'])),
-    color: String(findValue(item, ['COLOR', 'color', 'hex']) || '#9CA3AF')
-  }));
-}
-
-export async function fetchRiskMatrixData(): Promise<RiskEvent[]> {
-  const data = await fetchTableData('MATRIZ_RIESGO');
-  return data.map((item, idx) => ({
-    id: String(findValue(item, ['ID', 'id']) || `risk-${idx}`),
-    name: String(findValue(item, ['EVENTO', 'name', 'evento']) || 'Riesgo Desconocido'),
-    probability: parseSheetNumber(findValue(item, ['PROBABILIDAD', 'probability'])),
-    impact: parseSheetNumber(findValue(item, ['IMPACTO', 'impact'])),
-    level: String(findValue(item, ['NIVEL', 'level']) || 'Medio') as any,
-    category: String(findValue(item, ['CATEGORIA', 'category']) || 'General')
-  }));
-}
-
 export async function fetchPortfolioKpis(): Promise<PortfolioKpi[]> {
   const data = await fetchTableData('KPI_PORTAFOLIO');
   return data.map(item => {
     const rawVal = findValue(item, ['VALOR', 'value', 'dato']);
     const numVal = parseSheetNumber(rawVal);
     const type = String(findValue(item, ['TIPO', 'type']) || '').toLowerCase();
-    
     let displayValue = String(rawVal || '---');
-    
     if (numVal !== 0 && (type === 'exposicion' || type === 'diversificacion')) {
       const pctValue = Math.abs(numVal) < 1 ? numVal * 100 : numVal;
       displayValue = pctValue.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + '%';
     } else if (typeof rawVal === 'number' && rawVal > 1) {
       displayValue = rawVal.toLocaleString('es-ES');
     }
-
     return {
       label: String(findValue(item, ['ETIQUETA', 'label', 'titulo']) || ''),
       value: displayValue,
@@ -325,7 +398,6 @@ export async function updateTableData(tabName: string, data: any): Promise<{succ
 export async function fetchPerformanceHistory(): Promise<any[]> {
   const raw = await fetchTableData('HISTORIAL_RENDIMIENTOS');
   if (!raw || raw.length === 0) return [];
-
   const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
   const sorted = [...raw].sort((a, b) => {
     const yearA = parseInt(String(findValue(a, ['ANIO', 'year']) || 0));
@@ -333,17 +405,14 @@ export async function fetchPerformanceHistory(): Promise<any[]> {
     if (yearA !== yearB) return yearA - yearB;
     return parseInt(String(findValue(a, ['MES', 'month']) || 0)) - parseInt(String(findValue(b, ['MES', 'month']) || 0));
   });
-
   let currentPortfolio = 1000;
   let currentBenchmark = 1000;
-
   return sorted.map(item => {
     const pYield = parseSheetNumber(findValue(item, ['RENDIMIENTO_FONDO', 'pYield', 'rendimiento']));
     const bYield = parseSheetNumber(findValue(item, ['RENDIMIENTO_SP500', 'bYield', 'sp500']));
     currentPortfolio *= (1 + pYield);
     currentBenchmark *= (1 + bYield);
     const mes = parseInt(String(findValue(item, ['MES', 'month']) || 1));
-
     return {
       name: monthNames[mes - 1],
       year: String(findValue(item, ['ANIO', 'year']) || ''),
@@ -360,14 +429,12 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
     let openTab = 'HISTORY_OPEN';
     let closedTab = 'HISTORY_CLOSED';
     let targetUrl = FOREX_API_URL;
-
     if (category === 'commodities') targetUrl = COMMODITIES_API_URL;
     else if (category === 'stocks') {
       targetUrl = STOCKS_API_URL;
       openTab = 'STOCKS_OPEN';
       closedTab = 'STOCKS_CLOSED';
     }
-
     const fetchFunc = async (tab: string) => {
       try {
         const url = `${targetUrl}?tab=${tab}&t=${Date.now()}`;
@@ -379,15 +446,12 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
         return [];
       }
     };
-
     const [rawOpen, rawClosed] = await Promise.all([fetchFunc(openTab), fetchFunc(closedTab)]);
-
     const mapRecord = (item: any, isTradeOpen: boolean): Execution => {
       const fmtNum = (v: any) => {
         const n = parseSheetNumber(v);
         return n.toLocaleString('es-ES', { minimumFractionDigits: 2 });
       };
-
       return {
         ticket: String(findValue(item, ['ticket', 'id', 'orden', 'posicion', 'ticket_id']) || '0'),
         symbol: String(findValue(item, ['symbol', 'simbolo', 'asset', 'instrument', 'par']) || '---'),
@@ -407,7 +471,6 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
         isOpen: isTradeOpen
       };
     };
-
     return {
       closed: rawClosed.map(item => mapRecord(item, false)),
       open: rawOpen.map(item => mapRecord(item, true))

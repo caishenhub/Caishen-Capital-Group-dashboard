@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Lock, ShieldCheck, AlertCircle, X, ChevronRight, UserPlus, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { fetchTableData, findValue } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -15,7 +15,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isPoolLoading, setIsPoolLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Carga anticipada del padrón de socios (Pre-fetching)
   useEffect(() => {
     const session = localStorage.getItem('ccg_session');
     if (session) setIsAuthenticated(true);
@@ -23,7 +22,8 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     const loadUserPool = async () => {
       try {
-        const data = await fetchTableData('PADRON_SOCIOS');
+        // Uso de la nueva hoja institucional LIBRO_ACCIONISTAS
+        const data = await fetchTableData('LIBRO_ACCIONISTAS');
         setUserPool(data || []);
       } catch (e) {
         console.error("Error cargando padrón preventivo:", e);
@@ -32,6 +32,8 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       }
     };
     loadUserPool();
+    
+    if (session) warmUpCache();
   }, []);
 
   const handleIdentifierSubmit = async (e: React.FormEvent) => {
@@ -45,7 +47,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (isPoolLoading) {
       setIsSyncing(true);
       try {
-        currentPool = await fetchTableData('PADRON_SOCIOS');
+        currentPool = await fetchTableData('LIBRO_ACCIONISTAS');
         setUserPool(currentPool);
         setIsPoolLoading(false);
       } catch (e) {
@@ -65,12 +67,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       setFoundUser(user);
       setShowPinModal(true);
       setIsSyncing(false);
-      
-      // DISPARO INMEDIATO DE DATOS DEL DASHBOARD (Pre-fetching agresivo)
-      // No esperamos a que terminen, simplemente lanzamos las peticiones para que la caché
-      // o las inFlightRequests de googleSheets.ts empiecen a trabajar mientras el usuario pone el PIN.
-      fetchTableData('CONFIG_MAESTRA');
-      fetchTableData('HISTORIAL_RENDIMIENTOS');
+      warmUpCache();
     } else {
       setError('Socio no encontrado en el padrón oficial.');
       setIsSyncing(false);

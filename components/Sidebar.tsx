@@ -27,28 +27,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   /**
    * FUNCIÓN DE CIERRE DE SESIÓN DEFINITIVA
-   * 1. Limpieza total de almacenamiento (Local y Session) para borrar credenciales.
-   * 2. Redirige a la URL pública fija de la institución mediante reemplazo de historial.
-   * 3. Esto evita volver al dashboard mediante el botón atrás y soluciona errores de proxy.
    */
   const handleExit = () => {
-    // 1. Limpieza total de persistencia (Tokens, UIDs, PINs, Flags)
     localStorage.clear();
     sessionStorage.clear();
-    
-    // 2. Cerrar el menú lateral en dispositivos móviles si está abierto
     if (onClose) onClose();
-    
-    // 3. Redirección determinista mediante reemplazo de ubicación
-    // Usamos replace() con la URL absoluta para asegurar la salida total del sistema
-    // y evitar que el historial permita el retorno accidental.
     window.location.replace('https://caishencapital.co/');
   };
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Portafolio', path: '/portfolio', icon: PieChart },
-    { name: 'Gestión de Accionistas', path: '/users', icon: Users },
+    { name: 'Libro de Accionistas', path: '/users', icon: Users },
     { name: 'Resumen Ejecutivo', path: '/summary', icon: TrendingUp },
     { name: 'Reportes', path: '/reports', icon: FileText },
   ];

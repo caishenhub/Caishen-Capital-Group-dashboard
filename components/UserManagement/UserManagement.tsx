@@ -34,7 +34,8 @@ const UserManagement: React.FC = () => {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const data = await fetchTableData('PADRON_SOCIOS');
+      // Cambio de nombre de la hoja para consistencia institucional
+      const data = await fetchTableData('LIBRO_ACCIONISTAS');
       
       if (!data || data.length === 0) {
         setFetchError("El registro en la nube está vacío o no es accesible.");
@@ -128,7 +129,6 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  // Keyboard support for the modal
   useEffect(() => {
     if (!isVerifying) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -164,22 +164,7 @@ const UserManagement: React.FC = () => {
     <div className="p-8 lg:p-10 space-y-8 animate-in fade-in duration-700">
       <header className="flex flex-col md:flex-row md:items-start justify-between gap-6 border-b border-surface-border pb-8">
         <div className="space-y-1">
-          <div className="flex items-center gap-4">
-            <h2 className="text-3xl md:text-4xl font-black text-accent tracking-tighter uppercase leading-none">Padrón de Accionistas</h2>
-            <button 
-              onClick={loadData}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 group"
-            >
-              <div className="relative flex size-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${!isLoading ? 'duration-1000' : 'duration-300'}`}></span>
-                <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
-              </div>
-              <span className="text-[9px] font-black text-accent uppercase tracking-widest">
-                {isLoading ? 'Sincronizando...' : 'Nube Institucional'}
-              </span>
-            </button>
-          </div>
+          <h2 className="text-3xl md:text-4xl font-black text-accent tracking-tighter uppercase leading-none">Libro de Accionistas</h2>
           <p className="text-text-secondary text-sm md:text-base font-medium">Registro central protegido por protocolos de privacidad corporativa.</p>
         </div>
 
@@ -191,10 +176,20 @@ const UserManagement: React.FC = () => {
             <PlusCircle size={20} className="transition-transform group-hover:rotate-90" />
             SOLICITAR ACCIONES
           </button>
-          <div className="flex items-center gap-2 px-4 py-1.5 bg-surface-subtle border border-surface-border rounded-xl">
-             <Shield size={12} className="text-accent" />
-             <span className="text-[10px] text-text-muted font-black uppercase tracking-widest">Modo Privacidad Activo</span>
-          </div>
+          
+          <button 
+            onClick={loadData}
+            disabled={isLoading}
+            className="flex items-center gap-3 px-8 py-3.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
+          >
+            <div className="relative flex size-2.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${!isLoading ? 'duration-1000' : 'duration-300'}`}></span>
+              <span className="relative inline-flex rounded-full size-2.5 bg-primary shadow-[0_0_8px_rgba(206,255,4,0.6)]"></span>
+            </div>
+            <span className="text-[10px] font-black text-accent uppercase tracking-widest leading-none">
+              {isLoading ? 'Sincronizando...' : 'Nube Institucional'}
+            </span>
+          </button>
         </div>
       </header>
 
@@ -323,7 +318,7 @@ const UserManagement: React.FC = () => {
       {isVerifying && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsVerifying(false)} />
-          <div className={`relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20 ${error ? 'animate-bounce' : ''}`}>
+          <div className={`relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20 ${error ? 'animate-shake' : ''}`}>
             
             <button 
               onClick={() => setIsVerifying(false)}
@@ -343,7 +338,6 @@ const UserManagement: React.FC = () => {
                 </p>
               </div>
 
-              {/* PIN Display */}
               <div className="flex justify-center gap-3 mb-10">
                 {[0, 1, 2, 3].map((i) => (
                   <div 
@@ -359,7 +353,6 @@ const UserManagement: React.FC = () => {
                 ))}
               </div>
 
-              {/* Numeric Keypad for Mobile/Touch Support */}
               <div className="grid grid-cols-3 gap-3 w-full mb-8">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                   <button

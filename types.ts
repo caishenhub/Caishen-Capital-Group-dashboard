@@ -48,6 +48,7 @@ export interface CorporateNotice {
   description: string;
   type: 'Urgent' | 'Info' | 'Success';
   fullContent: string;
+  imageUrl?: string; // Nuevo campo para imágenes
 }
 
 export interface User {

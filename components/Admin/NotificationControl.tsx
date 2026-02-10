@@ -1,297 +1,170 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
-  ShieldCheck, 
-  Activity, 
-  Filter, 
-  Archive, 
-  CheckCircle2, 
-  Search,
-  Info,
-  Clock,
-  Zap,
-  MoreHorizontal,
   Send,
-  Eye,
-  Trash2
+  AlertTriangle, 
+  CheckCircle2, 
+  Info,
+  RefreshCw,
+  Clock,
+  LayoutGrid
 } from 'lucide-react';
-import { MOCK_ADMIN_NOTIFICATIONS, adminPublishNotification, getPublishedNotifications } from '../../constants';
-import { AdminNotification } from '../../types';
+import { publishNotice, fetchCorporateNotices } from '../../lib/googleSheets';
+import { CorporateNotice } from '../../types';
 
 const NotificationControl: React.FC = () => {
-  const [notifications, setNotifications] = useState<AdminNotification[]>(MOCK_ADMIN_NOTIFICATIONS);
-  const [publishedIds, setPublishedIds] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState('Todos');
-  const [filterImpact, setFilterImpact] = useState('Todos');
+  const [notices, setNotices] = useState<CorporateNotice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    type: 'Info' as CorporateNotice['type'],
+    fullContent: ''
+  });
+
+  const loadNotices = async () => {
+    setIsLoading(true);
+    const data = await fetchCorporateNotices(true);
+    setNotices(data);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
-    const published = getPublishedNotifications();
-    setPublishedIds(new Set(published.map(p => p.id)));
+    loadNotices();
   }, []);
 
-  const stats = useMemo(() => {
-    return {
-      total: notifications.length,
-      critical: notifications.filter(n => n.impact === 'Crítico').length,
-      latest: notifications[0]?.timestamp || '--',
-      status: 'Normal'
-    };
-  }, [notifications]);
-
-  const filteredData = useMemo(() => {
-    return notifications.filter(n => {
-      const matchesType = filterType === 'Todos' || n.event === filterType;
-      const matchesImpact = filterImpact === 'Todos' || n.impact === filterImpact;
-      return matchesType && matchesImpact;
-    });
-  }, [notifications, filterType, filterImpact]);
-
-  const getImpactStyle = (impact: string) => {
-    switch (impact) {
-      case 'Crítico': return 'bg-red-50 text-red-700 border-red-100';
-      case 'Relevante': return 'bg-orange-50 text-orange-700 border-orange-100';
-      default: return 'bg-blue-50 text-blue-700 border-blue-100';
+  const handlePublish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title || !form.description) return;
+    
+    setIsSending(true);
+    const res = await publishNotice(form);
+    
+    if (res.success) {
+      setForm({ title: '', description: '', type: 'Info', fullContent: '' });
+      loadNotices();
     }
-  };
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Confirmada': return 'text-green-600';
-      case 'Archivada': return 'text-text-muted opacity-50';
-      default: return 'text-accent';
-    }
-  };
-
-  const handleArchive = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, status: 'Archivada' } : n));
-  };
-
-  const handleConfirm = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, status: 'Confirmada' } : n));
-  };
-
-  const handleDelete = (id: string) => {
-    if (window.confirm("¿Está seguro de borrar esta notificación? Esta acción la eliminará de la vista administrativa.")) {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }
-  };
-
-  const handlePublish = (notif: AdminNotification) => {
-    adminPublishNotification(notif);
-    setPublishedIds(prev => new Set(prev).add(notif.id));
+    setIsSending(false);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 w-full">
-      <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-xl text-accent border border-primary/20">
-            <Bell size={20} />
+    <div className="space-y-10 animate-in fade-in duration-700 w-full pb-20">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-accent rounded-2xl text-primary shadow-xl">
+              <Bell size={24} />
+            </div>
+            <h2 className="text-accent text-3xl font-black tracking-tighter uppercase">Consola de Comunicados</h2>
           </div>
-          <h2 className="text-accent text-2xl font-black tracking-tighter uppercase">Consola de Control de Notificaciones</h2>
+          <p className="text-text-secondary font-medium text-sm">Emisión de avisos corporativos y alertas de seguridad para el Dashboard.</p>
         </div>
-        <p className="text-text-secondary font-medium text-sm">Supervisión y trazabilidad de eventos operativos del fondo.</p>
+        <button 
+          onClick={loadNotices}
+          className="flex items-center gap-2 px-6 py-3 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95"
+        >
+          <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Refrescar Historial</span>
+        </button>
       </header>
 
-      {/* Summary Indicators */}
-      <div className="flex flex-wrap gap-4">
-        <div className="bg-white border border-surface-border px-6 py-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[200px]">
-          <div className="size-10 bg-surface-subtle rounded-xl flex items-center justify-center text-accent">
-            <Zap size={18} />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+        {/* Formulario de Emisión */}
+        <div className="bg-[#1d1c2d] rounded-[40px] p-8 lg:p-12 text-white shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+            <Bell size={240} />
           </div>
-          <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Eventos Activos</p>
-            <p className="text-lg font-black text-accent">{stats.total}</p>
-          </div>
-        </div>
-        <div className="bg-white border border-surface-border px-6 py-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[200px]">
-          <div className="size-10 bg-red-50 rounded-xl flex items-center justify-center text-red-600">
-            <Info size={18} />
-          </div>
-          <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Alertas Críticas</p>
-            <p className="text-lg font-black text-red-600">{stats.critical}</p>
-          </div>
-        </div>
-        <div className="bg-white border border-surface-border px-6 py-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[240px]">
-          <div className="size-10 bg-surface-subtle rounded-xl flex items-center justify-center text-accent">
-            <Clock size={18} />
-          </div>
-          <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Última Emisión</p>
-            <p className="text-lg font-black text-accent">{stats.latest}</p>
-          </div>
-        </div>
-        <div className="bg-white border border-surface-border px-6 py-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[200px]">
-          <div className="size-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-            <ShieldCheck size={18} />
-          </div>
-          <div>
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Estado Sistema</p>
-            <p className="text-lg font-black text-green-600">{stats.status}</p>
-          </div>
-        </div>
-      </div>
+          
+          <form onSubmit={handlePublish} className="relative z-10 space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10">
+                <Send className="text-primary" size={28} />
+              </div>
+              <h3 className="text-2xl font-black tracking-tight uppercase leading-none">Nueva Notificación</h3>
+            </div>
 
-      {/* Main Table Container */}
-      <div className="bg-white border border-surface-border rounded-[32px] overflow-hidden shadow-premium">
-        {/* Table Filters */}
-        <div className="p-6 border-b border-gray-100 bg-surface-subtle/30 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
-              <input 
-                type="text" 
-                placeholder="Filtrar por descripción..."
-                className="w-full pl-10 pr-4 py-2 bg-white border border-surface-border rounded-xl text-xs font-bold text-accent placeholder:text-text-muted focus:ring-0 focus:border-primary transition-all"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter size={14} className="text-text-muted" />
-              <select 
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="bg-white border border-surface-border rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest text-accent cursor-pointer focus:ring-0"
-              >
-                <option>Todos</option>
-                <option>Transacción</option>
-                <option>Rentabilidad</option>
-                <option>Mercado</option>
-                <option>Sistema</option>
-                <option>Auditoría</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-             <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Impacto:</span>
-             <div className="flex bg-white p-1 rounded-xl border border-surface-border gap-1">
-                {['Todos', 'Informativo', 'Relevante', 'Crítico'].map(imp => (
-                  <button 
-                    key={imp}
-                    onClick={() => setFilterImpact(imp)}
-                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${
-                      filterImpact === imp ? 'bg-accent text-white' : 'text-text-muted hover:text-accent'
-                    }`}
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-primary uppercase tracking-widest ml-1">Título del Comunicado</label>
+                <input 
+                  type="text" 
+                  value={form.title}
+                  onChange={(e) => setForm({...form, title: e.target.value})}
+                  placeholder="Ej: Cierre de Periodo Enero 2026"
+                  className="w-full bg-white/5 border-2 border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:border-primary focus:ring-0 transition-all placeholder:text-white/20"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-primary uppercase tracking-widest ml-1">Descripción Corta (Vista Previa)</label>
+                <textarea 
+                  value={form.description}
+                  onChange={(e) => setForm({...form, description: e.target.value})}
+                  placeholder="Se están dispersando los dividendos..."
+                  className="w-full bg-white/5 border-2 border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:border-primary focus:ring-0 transition-all placeholder:text-white/20 h-24 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-primary uppercase tracking-widest ml-1">Tipo de Alerta</label>
+                  <select 
+                    value={form.type}
+                    onChange={(e) => setForm({...form, type: e.target.value as any})}
+                    className="w-full bg-white/5 border-2 border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:border-primary focus:ring-0 transition-all cursor-pointer"
                   >
-                    {imp}
+                    <option value="Info">Informativa (Azul)</option>
+                    <option value="Urgent">Urgente (Roja)</option>
+                    <option value="Success">Éxito (Verde)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button 
+                    type="submit"
+                    disabled={isSending || !form.title || !form.description}
+                    className="w-full bg-primary text-accent font-black py-4 rounded-2xl shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 uppercase text-xs tracking-widest disabled:opacity-30"
+                  >
+                    {isSending ? <RefreshCw className="animate-spin" /> : <Send size={18} />}
+                    {isSending ? 'Emitiendo...' : 'Publicar Ahora'}
                   </button>
-                ))}
-             </div>
-          </div>
+                </div>
+              </div>
+            </div>
+          </form>
         </div>
 
-        {/* The Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-subtle/50 text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-gray-100">
-                <th className="px-8 py-5">Tipo de Evento</th>
-                <th className="px-8 py-5">Descripción</th>
-                <th className="px-8 py-5 text-center">Origen</th>
-                <th className="px-8 py-5 text-center">Impacto</th>
-                <th className="px-8 py-5">Fecha y Hora</th>
-                <th className="px-8 py-5 text-center">Estado</th>
-                <th className="px-8 py-5 text-right">Auditoría / Dashboard</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredData.map((notif) => (
-                <tr key={notif.id} className="hover:bg-surface-subtle/20 transition-colors group">
-                  <td className="px-8 py-6">
+        {/* Historial en Nube */}
+        <div className="bg-white rounded-[40px] border border-surface-border shadow-premium flex flex-col h-full min-h-[500px]">
+          <header className="p-8 border-b border-surface-border flex justify-between items-center bg-surface-subtle/30">
+            <div className="flex items-center gap-3">
+              <Clock size={18} className="text-accent" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-accent">Historial en Nube</h3>
+            </div>
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{notices.length} Registros</span>
+          </header>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-[600px] hide-scrollbar">
+            {isLoading ? (
+              <div className="h-full flex flex-col items-center justify-center gap-4 opacity-50">
+                <RefreshCw size={32} className="animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando...</p>
+              </div>
+            ) : (
+              notices.map((n) => (
+                <div key={n.id} className="p-5 border border-surface-border rounded-3xl hover:border-primary/50 transition-all group bg-surface-subtle/20">
+                  <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-lg bg-surface-subtle flex items-center justify-center text-accent group-hover:bg-white group-hover:shadow-sm transition-all">
-                        {notif.event === 'Auditoría' ? <ShieldCheck size={14} /> : <Activity size={14} />}
-                      </div>
-                      <span className="text-xs font-black text-accent">{notif.event}</span>
+                       <span className={`size-3 rounded-full ${n.type === 'Urgent' ? 'bg-red-500' : n.type === 'Success' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+                       <h4 className="text-xs font-black text-accent uppercase">{n.title}</h4>
                     </div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <p className="text-xs font-bold text-text-secondary max-w-xs leading-relaxed">
-                      {notif.description}
-                    </p>
-                  </td>
-                  <td className="px-8 py-6 text-center">
-                    <span className="px-2 py-1 bg-gray-100 rounded text-[9px] font-black text-text-muted uppercase tracking-widest border border-gray-200">
-                      {notif.origin}
-                    </span>
-                  </td>
-                  <td className="px-8 py-6 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border shadow-sm ${getImpactStyle(notif.impact)}`}>
-                      {notif.impact}
-                    </span>
-                  </td>
-                  <td className="px-8 py-6">
-                    <span className="text-[10px] font-bold text-text-muted">{notif.timestamp}</span>
-                  </td>
-                  <td className="px-8 py-6 text-center">
-                    <div className={`flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${getStatusStyle(notif.status)}`}>
-                      {notif.status === 'Confirmada' && <CheckCircle2 size={12} />}
-                      {notif.status}
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                       {/* BOTÓN PUBLICAR AL DASHBOARD GLOBAL */}
-                       {!publishedIds.has(notif.id) ? (
-                         <button 
-                           onClick={() => handlePublish(notif)}
-                           className="p-2 bg-primary/10 text-accent hover:bg-primary rounded-lg transition-all border border-primary/20 flex items-center gap-2 group/publish"
-                           title="Publicar en Dashboard Global"
-                         >
-                           <Send size={14} className="group-hover/publish:translate-x-0.5 group-hover/publish:-translate-y-0.5 transition-transform" />
-                           <span className="text-[9px] font-black uppercase hidden lg:inline">Publicar</span>
-                         </button>
-                       ) : (
-                         <div className="p-2 bg-accent/5 text-accent rounded-lg border border-accent/10 flex items-center gap-2 cursor-default">
-                           <Eye size={14} className="text-primary" />
-                           <span className="text-[9px] font-black uppercase hidden lg:inline">En Vivo</span>
-                         </div>
-                       )}
-
-                       <div className="h-4 w-px bg-gray-200 mx-1"></div>
-
-                       {notif.status === 'Emitida' && (
-                         <button 
-                           onClick={() => handleConfirm(notif.id)}
-                           className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                           title="Confirmar Auditoría"
-                         >
-                           <CheckCircle2 size={16} />
-                         </button>
-                       )}
-                       
-                       <button 
-                          onClick={() => handleArchive(notif.id)}
-                          className={`p-2 rounded-lg transition-all ${notif.status === 'Archivada' ? 'text-accent bg-gray-100' : 'text-text-muted hover:text-accent hover:bg-gray-100'}`}
-                          title="Archivar"
-                       >
-                         <Archive size={16} />
-                       </button>
-
-                       {/* BOTÓN BORRAR */}
-                       <button 
-                          onClick={() => handleDelete(notif.id)}
-                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Borrar Notificación"
-                       >
-                         <Trash2 size={16} />
-                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Auditoría footer */}
-        <div className="p-6 bg-surface-subtle/30 border-t border-gray-50">
-          <div className="flex items-center gap-3 text-text-muted">
-            <Info size={16} className="text-accent" />
-            <p className="text-[10px] font-bold leading-relaxed max-w-lg">
-              Al publicar una notificación, esta aparecerá inmediatamente en el panel global de todos los accionistas. Las eliminaciones en este panel son visuales para la gestión administrativa.
-            </p>
+                    <span className="text-[10px] font-bold text-text-muted">{n.date}</span>
+                  </div>
+                  <p className="text-[11px] text-text-secondary font-medium leading-relaxed">{n.description}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
