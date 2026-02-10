@@ -156,21 +156,23 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-1000 max-w-full overflow-x-hidden">
+      {/* HEADER OPTIMIZADO */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-        <div className="flex flex-col gap-2 flex-1">
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
           <h1 className="text-accent text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-1">
-            Estado del Fondo Global
+            Estado de Gestión Corporativa
           </h1>
           <p className="text-text-secondary text-[11px] md:text-base font-medium">
-            Cifras consolidadas de la institución al {currentDate}.
+            Cifras consolidadas de la gestión institucional al {currentDate}.
           </p>
         </div>
 
-        <div className="flex flex-col items-center md:items-end gap-4 shrink-0 self-center md:self-auto">
+        <div className="flex flex-col items-center md:items-end gap-4 w-full md:w-auto shrink-0 self-center md:self-auto">
+          {/* BOTÓN NUBE ANCHO COMPLETO EN MÓVIL */}
           <button 
             onClick={() => loadConfigs()}
             disabled={isLoading}
-            className="flex items-center gap-4 px-8 py-3.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
+            className="w-full md:w-auto flex items-center justify-center gap-4 px-8 py-3.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
           >
             <div className="relative flex size-3">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${isLoading ? 'duration-300' : 'duration-1000'}`}></span>
@@ -181,7 +183,8 @@ const Dashboard: React.FC = () => {
             </span>
           </button>
 
-          <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar max-w-full">
+          {/* SELECTOR DE PERIODO CORREGIDO */}
+          <div className="w-full md:w-auto flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-surface-border shadow-sm overflow-x-auto hide-scrollbar">
             <span className="shrink-0 pl-3 text-[9px] font-black text-text-muted uppercase tracking-widest">Periodo:</span>
             <div className="flex gap-1 shrink-0">
               {['General', 2022, 2023, 2024, 2025, 2026].map((p) => (
@@ -202,22 +205,22 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <StatCard 
-          title={selectedPeriod === 'General' ? "AUM TOTAL DEL FONDO" : `AUM CIERRE ${selectedPeriod}`} 
+          title={selectedPeriod === 'General' ? "CAPITAL BAJO GESTIÓN (AUM)" : `AUM CIERRE ${selectedPeriod}`} 
           value={metrics.aum ? `$${metrics.aum.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '---'} 
           change={metrics.growth >= 0 ? `+${metrics.growth.toFixed(2)}%` : `${metrics.growth.toFixed(2)}%`} 
-          changeLabel={selectedPeriod === 'General' ? "Rendimiento Acumulado" : `Rendimiento Anual ${selectedPeriod}`} 
+          changeLabel={selectedPeriod === 'General' ? "Rendimiento Institucional" : `Crecimiento Anual ${selectedPeriod}`} 
           icon={Wallet} variant="light" isNegative={metrics.growth < 0}
         />
         <StatCard 
-          title={selectedPeriod === 'General' ? "UTILIDAD ACUMULADA FONDO" : `UTILIDAD FONDO ${selectedPeriod}`} 
+          title={selectedPeriod === 'General' ? "RENDIMIENTO NETO INSTITUCIONAL" : `BENEFICIO NETO ${selectedPeriod}`} 
           value={metrics.profit ? `$${metrics.profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '---'} 
           change={selectedPeriod === 'General' ? "Histórica" : `${selectedPeriod}`} 
-          changeLabel={selectedPeriod === 'General' ? "Total generado por el fondo" : `Generado en el periodo`} 
+          changeLabel={selectedPeriod === 'General' ? "Beneficio neto consolidado" : `Generado en el periodo`} 
           icon={PiggyBank} variant="light" isNegative={metrics.profit < 0}
         />
         <StatCard 
           title="COBERTURA DE RESERVA" value={`${reserveValue}%`} progress={reserveValue} icon={ShieldCheck} variant="light"
-          changeLabel={reserveValue < 100 ? "Fondo de Garantía Activo" : "Liquidez 100% Protegida"}
+          changeLabel={reserveValue < 100 ? "Liquidez Corporativa Activa" : "Patrimonio 100% Protegido"}
         />
       </div>
 
@@ -228,8 +231,8 @@ const Dashboard: React.FC = () => {
               <Activity className="size-4 text-accent" />
             </div>
             <div>
-              <h3 className="text-accent text-base md:text-xl font-extrabold tracking-tight">Evolución Global</h3>
-              <p className="text-text-muted text-[8px] font-medium uppercase tracking-widest">Desempeño institucional del fondo</p>
+              <h3 className="text-accent text-base md:text-xl font-extrabold tracking-tight">Evolución Institucional</h3>
+              <p className="text-text-muted text-[8px] font-medium uppercase tracking-widest">Desempeño operativo del capital</p>
             </div>
           </div>
           <div className="h-[240px] md:h-[350px] w-full">
@@ -242,7 +245,7 @@ const Dashboard: React.FC = () => {
             <div className="p-2.5 bg-primary/10 rounded-xl">
               <Target className="size-4 text-accent" />
             </div>
-            <h3 className="text-accent text-base font-extrabold tracking-tight uppercase">Activos Gestionados</h3>
+            <h3 className="text-accent text-base font-extrabold tracking-tight uppercase">Activos Corporativos</h3>
           </div>
           <AllocationPieChart data={portfolioData} totalAum={metrics.aum} />
           <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-2 w-full px-2">

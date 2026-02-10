@@ -42,7 +42,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, changeLabel, 
           <p className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] mb-2 ${variant === 'dark' ? 'text-gray-400' : 'text-text-muted'}`}>
             {title}
           </p>
-          <h3 className="text-xl md:text-3xl lg:text-4xl font-black tracking-tighter truncate leading-tight">
+          <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black tracking-tighter truncate leading-tight">
             {value}
           </h3>
         </div>
