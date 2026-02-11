@@ -28,7 +28,8 @@ import {
   UserCheck,
   FileText,
   Bitcoin,
-  EyeOff
+  EyeOff,
+  AlertOctagon
 } from 'lucide-react';
 import { fetchTableData, findValue, norm, parseSheetNumber, saveShareholderAccount, fetchShareholderAccount, logAccountChangeRequest } from '../../lib/googleSheets';
 
@@ -280,7 +281,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               ))}
             </section>
 
-            {/* HISTORIAL DE RENDIMIENTOS - COLORES VERDE/NARANJA RESTAURADOS */}
+            {/* HISTORIAL DE RENDIMIENTOS */}
             <section className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-12">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
                 <div className="flex items-center gap-4">
@@ -329,7 +330,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               </div>
             </section>
 
-            {/* PROTOCOLO DE DISPERSIÓN - DISEÑO AZUL PRESERVADO */}
+            {/* PROTOCOLO DE DISPERSIÓN */}
             <section className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-12 relative overflow-hidden group">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
                 <div className="flex items-center gap-4">
@@ -342,7 +343,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   </div>
                 </div>
                 {registeredAccount && (
-                  <div className={`px-5 py-2 rounded-xl border text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-sm ${isStatusActive ? 'bg-accent text-primary border-accent/10' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
+                  <div className={`px-5 py-2 rounded-xl border text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-sm ${isStatusActive ? 'bg-accent text-primary border-accent/10 shadow-neon' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
                     <ShieldCheck size={14} /> {isStatusActive ? 'CANAL VERIFICADO' : 'VALIDACIÓN DE DISPERSIÓN'}
                   </div>
                 )}
@@ -404,10 +405,10 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   <div className="space-y-6">
                     <div className="bg-surface-subtle p-8 rounded-[40px] border border-surface-border space-y-6">
                        <h4 className="text-sm font-black text-accent uppercase tracking-[0.2em] flex items-center gap-3"><ShieldCheck size={18} className="text-accent" /> Vinculación Oficial</h4>
-                       <p className="text-sm text-text-secondary font-medium leading-relaxed">Este canal ha sido vinculado para la recepción de dividendos. Para modificar los datos, se requiere una validación del oficial de cumplimiento.</p>
-                       <button onClick={handleSupportRequest} disabled={registeredAccount.requestPending || isRequestingSupport} className="w-full flex items-center justify-center gap-3 px-8 py-5 bg-accent text-white rounded-[24px] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all disabled:opacity-50 group">
-                        {isRequestingSupport ? <RefreshCw size={16} className="animate-spin" /> : <MessageSquare size={16} />}
-                        {registeredAccount.requestPending ? 'Validación en Curso' : 'Solicitar Cambio de Canal'}
+                       <p className="text-sm text-text-secondary font-medium leading-relaxed">Este canal ha sido vinculado para la recepción de dividendos. {isStatusActive ? 'Canal verificado y activo para dispersiones automáticas. Puede reportar cualquier inconveniente con su cuenta aquí.' : 'Para modificar los datos, se requiere una validación del oficial de cumplimiento.'}</p>
+                       <button onClick={handleSupportRequest} disabled={registeredAccount.requestPending || isRequestingSupport} className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-[24px] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl transition-all disabled:opacity-50 group ${isStatusActive ? 'bg-white border-2 border-accent text-accent hover:bg-surface-subtle' : 'bg-accent text-white hover:bg-black'}`}>
+                        {isRequestingSupport ? <RefreshCw size={16} className="animate-spin" /> : (registeredAccount.requestPending ? <Clock size={16} /> : (isStatusActive ? <ShieldCheck size={16} /> : <MessageSquare size={16} />))}
+                        {registeredAccount.requestPending ? 'Validación en Curso' : (isStatusActive ? 'VERIFICADO - REPORTAR INCIDENCIA' : 'Solicitar Cambio de Canal')}
                       </button>
                     </div>
                   </div>

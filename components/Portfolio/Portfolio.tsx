@@ -140,7 +140,7 @@ const Portfolio: React.FC = () => {
         </button>
       </header>
 
-      {/* TARJETAS KPI CON DISEÑO UNIFICADO Y RESPONSIVO */}
+      {/* TARJETAS KPI */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {kpis.length > 0 ? kpis.map((kpi, i) => {
           const Icon = getKpiIcon(kpi.type);
@@ -409,28 +409,28 @@ const Portfolio: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-2 md:p-4">
           <div className="absolute inset-0 bg-accent/80 backdrop-blur-2xl animate-in fade-in duration-300" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-5xl max-h-[95vh] bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
-            <header className="p-8 md:p-10 border-b border-surface-border flex justify-between items-center bg-white shrink-0">
-              <div className="flex items-center gap-4 md:gap-6">
-                <div className="p-3 md:p-4 bg-[#1d1c2d] rounded-[20px] md:rounded-[24px] text-[#ceff04] shadow-xl"><ShieldCheck size={28} /></div>
+          <div className="relative w-full max-w-5xl h-[92vh] md:max-h-[95vh] bg-white rounded-[24px] md:rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
+            <header className="px-6 py-4 md:p-10 border-b border-surface-border flex justify-between items-center bg-white shrink-0">
+              <div className="flex items-center gap-3 md:gap-6">
+                <div className="p-2 md:p-4 bg-[#1d1c2d] rounded-xl md:rounded-[24px] text-[#ceff04] shadow-xl"><ShieldCheck size={20} md:size={28} /></div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-black text-[#1d1c2d] tracking-tighter uppercase leading-none">Análisis Estratégico</h2>
-                  <p className="text-[10px] font-black text-[#9ca3af] uppercase tracking-widest mt-1">Intelligence Verification v4.2</p>
+                  <h2 className="text-lg md:text-2xl font-black text-[#1d1c2d] tracking-tighter uppercase leading-none">Análisis Estratégico</h2>
+                  <p className="text-[8px] md:text-[10px] font-black text-[#9ca3af] uppercase tracking-widest mt-0.5 md:mt-1">Intelligence Verification v4.2</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-3 hover:bg-[#f8f9fa] rounded-full transition-all text-[#9ca3af] hover:text-[#1d1c2d]">
-                <X size={24} />
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f8f9fa] rounded-full transition-all text-[#9ca3af] hover:text-[#1d1c2d]">
+                <X size={20} md:size={24} />
               </button>
             </header>
-            <div className="flex-1 overflow-y-auto p-8 md:p-16 scroll-smooth hide-scrollbar bg-white">
+            <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth hide-scrollbar bg-white">
               <DetailedOperationalReport />
             </div>
-            <footer className="p-8 md:p-10 border-t border-surface-border bg-white flex justify-end shrink-0">
+            <footer className="px-6 py-4 md:p-10 border-t border-surface-border bg-white flex justify-end shrink-0">
               <button 
                 onClick={() => setShowModal(false)}
-                className="w-full md:w-auto bg-[#1d1c2d] text-[#ceff04] font-black px-12 py-4 rounded-[20px] hover:bg-black transition-all uppercase text-[10px] tracking-widest shadow-2xl active:scale-95"
+                className="w-full md:w-auto bg-[#1d1c2d] text-[#ceff04] font-black px-8 md:px-12 py-3.5 md:py-4 rounded-xl md:rounded-[20px] hover:bg-black transition-all uppercase text-[9px] md:text-[10px] tracking-widest shadow-2xl active:scale-95"
               >
                 Finalizar Consulta
               </button>
