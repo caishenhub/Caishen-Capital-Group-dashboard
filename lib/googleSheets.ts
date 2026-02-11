@@ -72,10 +72,9 @@ const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4B
 const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7yRPTdP84d1QGxsQejGF2dQj5M9VFSSZBiDsSwsMsNRIGUjY5wXFgJDOjMQ/exec';
 const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
 
-// Sistema de Caché Persistente en Memoria
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
 const inFlightRequests: Record<string, Promise<any[]>> = {};
-const CACHE_DURATION = 1000 * 60 * 10; // 10 minutos para datos estáticos
+const CACHE_DURATION = 1000 * 60 * 10;
 
 export const norm = (str: any): string => 
   String(str || '')
@@ -113,7 +112,6 @@ function formatSheetDate(dateVal: any): string {
   }).replace(/\./g, '');
 }
 
-// Función para pre-cargar todas las tablas críticas al inicio
 export const warmUpCache = async () => {
   const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO', 'KPI_PORTAFOLIO', 'ESTRUCTURA_PORTAFOLIO'];
   return Promise.allSettled(tabs.map(tab => fetchTableData(tab)));
@@ -135,12 +133,9 @@ export async function checkConnection(): Promise<boolean> {
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!GOOGLE_CONFIG.SCRIPT_API_URL) return [];
 
-  // 1. Prioridad Máxima: Devolver caché si existe para evitar spinners
   if (!ignoreCache && prefetchCache[tabName]) {
     const cached = prefetchCache[tabName];
-    // Si la caché es reciente, la devolvemos inmediatamente
     if (Date.now() - cached.timestamp < CACHE_DURATION) {
-      // Lanzamos una actualización silenciosa en segundo plano si ha pasado más de 1 min
       if (Date.now() - cached.timestamp > 1000 * 60) {
         refreshInBackground(tabName);
       }
@@ -148,7 +143,6 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
     }
   }
 
-  // 2. Si ya hay una petición igual volando, nos unimos a ella
   if (inFlightRequests[tabName]) {
     return inFlightRequests[tabName];
   }
@@ -181,7 +175,6 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   return fetchPromise;
 }
 
-// Función interna para refrescar datos sin bloquear la UI
 async function refreshInBackground(tabName: string) {
   if (inFlightRequests[tabName]) return;
   try {
@@ -195,9 +188,7 @@ async function refreshInBackground(tabName: string) {
       return cleanRow;
     });
     prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
-  } catch (e) {
-    // Falla silenciosa en background
-  }
+  } catch (e) { }
 }
 
 export async function fetchStrategicReport(ignoreCache = false): Promise<StrategicReportSection[]> {
@@ -289,6 +280,91 @@ export async function publishNotice(notice: Partial<CorporateNotice>): Promise<{
   } catch (e) {
     return { success: false };
   }
+}
+
+/**
+ * Guarda el método de dispersión con la nueva estructura de columnas profesional.
+ * Mapeo exacto: UID_SOCIO, TIPO_METODO, TITULAR_NOMBRE, TITULAR_DOC_TIPO, TITULAR_DOC_NUM, INSTITUCION_NOMBRE, CUENTA_NUMERO, TIPO_CUENTA_RED, PAIS_EXCHANGE, CODIGO_SWIFT_BIC, FECHA_REGISTRO, ESTATUS_VERIFICACION, SOLICITUDES_CAMBIO
+ */
+export async function saveShareholderAccount(uid: string, accountData: any): Promise<{success: boolean}> {
+  const payload = {
+    action: 'append',
+    tab: 'DATOS_PAGO_SOCIOS',
+    data: {
+      UID_SOCIO: uid,
+      TIPO_METODO: accountData.type,
+      TITULAR_NOMBRE: accountData.holderName || '',
+      TITULAR_DOC_TIPO: accountData.docType || '',
+      TITULAR_DOC_NUM: accountData.docNumber || '',
+      INSTITUCION_NOMBRE: accountData.institution,
+      CUENTA_NUMERO: accountData.identifier,
+      TIPO_CUENTA_RED: accountData.network,
+      PAIS_EXCHANGE: accountData.platform,
+      CODIGO_SWIFT_BIC: accountData.swiftCode || 'N/A',
+      FECHA_REGISTRO: new Date().toISOString(),
+      ESTATUS_VERIFICACION: 'PENDIENTE',
+      SOLICITUDES_CAMBIO: ''
+    }
+  };
+  try {
+    await fetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+    return { success: true };
+  } catch (e) {
+    return { success: false };
+  }
+}
+
+export async function logAccountChangeRequest(uid: string, currentAccount: string): Promise<{success: boolean}> {
+  const payload = {
+    action: 'update',
+    tab: 'DATOS_PAGO_SOCIOS',
+    data: {
+      UID_SOCIO: uid,
+      SOLICITUDES_CAMBIO: `Solicitud de modificación enviada el ${new Date().toLocaleString('es-ES')}`
+    }
+  };
+  try {
+    await fetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+    return { success: true };
+  } catch (e) {
+    return { success: false };
+  }
+}
+
+export async function fetchShareholderAccount(uid: string): Promise<any | null> {
+  const data = await fetchTableData('DATOS_PAGO_SOCIOS', true);
+  const targetUid = norm(uid);
+  const record = data.find(r => norm(findValue(r, ['UID_SOCIO', 'uid'])) === targetUid);
+  if (!record) return null;
+
+  const type = String(findValue(record, ['TIPO_METODO', 'tipo']) || '');
+  const institution = String(findValue(record, ['INSTITUCION_NOMBRE', 'institucion']) || '');
+  const account = String(findValue(record, ['CUENTA_NUMERO', 'cuenta']) || '');
+  const network = String(findValue(record, ['TIPO_CUENTA_RED', 'red']) || '');
+  const platform = String(findValue(record, ['PAIS_EXCHANGE', 'plataforma']) || '');
+  const holder = String(findValue(record, ['TITULAR_NOMBRE', 'nombre']) || '');
+  const docNum = String(findValue(record, ['TITULAR_DOC_NUM', 'documento']) || '');
+  const status = String(findValue(record, ['ESTATUS_VERIFICACION', 'estatus']) || 'PENDIENTE');
+  const requests = String(findValue(record, ['SOLICITUDES_CAMBIO', 'solicitud']) || '');
+
+  return {
+    type,
+    institution,
+    account,
+    network,
+    platform,
+    status,
+    requestPending: requests.toLowerCase().includes('solicitud'),
+    holderInfo: type === 'CRYPTO' ? `Wallet: ${account.slice(0, 10)}...` : `${holder} (${docNum})`
+  };
 }
 
 function normalizeSections(rawJson: string): ReportSection[] {

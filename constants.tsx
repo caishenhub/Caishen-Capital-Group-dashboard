@@ -1,9 +1,10 @@
+
 import { Asset, Transaction, Report, User, CorporateNotice, AdminNotification } from './types';
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
-  // URL REAL proporcionada por el usuario para la sincronización maestra
-  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycby-h02XetymxvLD9RMvO2E2TH7IxE_mMMtLw9eRTptHiUAgMFLh2DMwS0K9pbYp_qXyBw/exec',
+  // URL REAL actualizada con la implementación final del usuario
+  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbw52eRJHauh8nuu-rMiWzpPhjtoAJSO8zok4wb7gbVQrMfCp5Trw9jYGuYuQ_V4XAepwg/exec',
   TAB_NAME: 'CONFIG_MAESTRA'
 };
 
@@ -121,12 +122,10 @@ export const MOCK_REPORTS: Report[] = [
     highlight: 'Transición a esquema unificado de capital, riesgo y rendimiento a partir de julio de 2026.',
     sections: [
       {
-        // Fix: 'title' changed to 'titulo' to match ReportSection interface
         titulo: '1. Introducción institucional',
         content: 'Como parte del proceso continuo de fortalecimiento del modelo operativo, optimización del capital colectivo y consolidación de la gestión de riesgo, el Comité Técnico, en conjunto con el Área Administrativa, ha aprobado una actualización estratégica en la estructura del portafolio.'
       },
       {
-        // Fix: 'title' changed to 'titulo' to match ReportSection interface
         titulo: '2. Cambio principal de condiciones operativas',
         content: 'A partir del mes de julio (inicio del segundo semestre del año), todos los inversionistas pasarán a estar vinculados de forma integral al portafolio consolidado.'
       }
@@ -141,7 +140,6 @@ export const MOCK_REPORTS: Report[] = [
     highlight: 'Riesgo de mercado materializado, gestionado mediante mecanismos internos de mitigación.',
     sections: [
       {
-        // Fix: 'title' changed to 'titulo' to match ReportSection interface
         titulo: '1. Resumen Ejecutivo',
         content: 'Se informa que durante el periodo evaluado se materializó un escenario de riesgo de mercado asociado a la alta volatilidad del activo XAUUSD (oro), gestionado exitosamente mediante el fondo de reserva.'
       }
