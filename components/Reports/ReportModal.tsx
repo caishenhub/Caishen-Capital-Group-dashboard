@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { X, Calendar, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Calendar, Check, Download, FileText, Loader2 } from 'lucide-react';
 import { Report } from '../../types';
+import { generateReportPDF } from '../../lib/pdfService';
 
 interface ReportModalProps {
   report: Report;
@@ -27,12 +28,23 @@ const DEFAULT_MAP: Record<string, { bg: string, text: string }> = {
 };
 
 const ReportModal: React.FC<ReportModalProps> = ({ report, onClose }) => {
+  const [isExporting, setIsExporting] = useState(false);
+
   React.useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, []);
+
+  const handleDownload = async () => {
+    setIsExporting(true);
+    try {
+      await generateReportPDF(report);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const resolveColors = () => {
     if (report.color && report.color.startsWith('#')) {
@@ -147,20 +159,31 @@ const ReportModal: React.FC<ReportModalProps> = ({ report, onClose }) => {
           )}
         </div>
 
-        <div className="px-8 py-6 bg-gray-50/50 flex items-center justify-end gap-3 border-t border-gray-100 bg-white sticky bottom-0">
+        <div className="px-8 py-6 bg-gray-50/50 flex items-center justify-between gap-3 border-t border-gray-100 bg-white sticky bottom-0">
           <button 
-            onClick={onClose}
-            className="px-6 py-2.5 rounded-xl text-xs font-black text-accent bg-white border border-surface-border hover:bg-white/50 transition-all"
+            onClick={handleDownload}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-accent bg-primary hover:bg-primary-hover transition-all shadow-md disabled:opacity-50"
           >
-            Cerrar
+            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            <span>Exportar PDF</span>
           </button>
-          <button 
-            onClick={onClose}
-            className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-accent hover:bg-accent/90 flex items-center gap-2 transition-all shadow-lg"
-          >
-            <Check size={14} style={{ color: accentColor }} />
-            <span>Entendido</span>
-          </button>
+          
+          <div className="flex gap-2">
+            <button 
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl text-xs font-black text-accent bg-white border border-surface-border hover:bg-white/50 transition-all"
+            >
+              Cerrar
+            </button>
+            <button 
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-accent hover:bg-accent/90 flex items-center gap-2 transition-all shadow-lg"
+            >
+              <Check size={14} style={{ color: accentColor }} />
+              <span>Entendido</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
