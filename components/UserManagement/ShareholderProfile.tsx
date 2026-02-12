@@ -80,7 +80,6 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
   const [isRequestingSupport, setIsRequestingSupport] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showRequestSuccess, setShowRequestSuccess] = useState(false);
-  const [accountError, setAccountError] = useState<string | null>(null);
 
   // Estados para cambio de PIN
   const [showPinChange, setShowPinChange] = useState(false);
@@ -129,7 +128,6 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
 
   const syncProfileData = async () => {
     setIsLoading(true);
-    setAccountError(null);
     try {
       const [allDividends, masterConfig, accountData, sociosData] = await Promise.all([
         fetchTableData('DIVIDENDOS_SOCIOS'),
@@ -151,10 +149,8 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
       setRegisteredAccount(accountData);
       
       if (freshUser) {
-        const freshName = String(findValue(freshUser, ['NOMBRE_COMPLETO', 'name', 'nombre']) || user.name);
         setFormData(prev => ({
           ...prev,
-          holderName: freshName,
           docNumber: String(findValue(freshUser, ['NUM_DOCUMENTO']) || prev.docNumber),
           phone: String(findValue(freshUser, ['TELEFONO']) || prev.phone),
           birthDate: String(findValue(freshUser, ['FECHA_NACIMIENTO']) || prev.birthDate),
@@ -229,12 +225,9 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
   }, [registeredAccount]);
 
   const handleSaveAccount = async () => {
-    setIsSavingAccount(true);
-    setAccountError(null);
-    
     let payload: any = {
       type: activeWithdrawalTab === 'crypto' ? 'CRYPTO' : activeWithdrawalTab === 'bank' ? 'BANK' : 'DEBIT',
-      holderName: formData.holderName, 
+      holderName: user.name, 
       docType: activeWithdrawalTab === 'crypto' ? 'N/A' : formData.docType,
       docNumber: activeWithdrawalTab === 'crypto' ? 'N/A' : formData.docNumber,
       institution: activeWithdrawalTab === 'crypto' ? formData.cryptoCurrency : formData.bankName,
@@ -244,20 +237,17 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
       swiftCode: activeWithdrawalTab === 'bank' ? (formData.swiftCode || 'N/A') : 'N/A'
     };
 
+    if (activeWithdrawalTab === 'crypto' ? !formData.walletAddress : (!formData.docNumber || !formData.accountNumber)) return;
+    
+    setIsSavingAccount(true);
     try {
       const res = await saveShareholderAccount(user.uid, payload);
       if (res.success) {
         setShowConfirm(false);
-        setShowRequestSuccess(true);
-        setTimeout(() => {
-          setShowRequestSuccess(false);
-          syncProfileData();
-        }, 3000);
-      } else {
-        setAccountError("La nube no confirmó el registro. Verifica tu conexión o el estado del script.");
+        setTimeout(syncProfileData, 1500);
       }
     } catch (e) {
-      setAccountError("Error de comunicación con el motor de pagos.");
+      console.error("Error guardando cuenta:", e);
     } finally {
       setIsSavingAccount(false);
     }
@@ -417,7 +407,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   onClick={() => setActiveView('account')}
                   className="text-3xl lg:text-4xl font-black text-accent tracking-tighter uppercase leading-none cursor-pointer hover:text-primary transition-colors"
                 >
-                  {formData.holderName}
+                  {user.name}
                 </h1>
                 <div className="flex items-center gap-4">
                   <div className="px-3 py-1.5 bg-[#faffd1] text-accent text-[10px] font-black rounded-lg uppercase tracking-widest border border-[#e5ebbc]">
@@ -456,6 +446,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
             <p className="text-[10px] font-black text-accent uppercase tracking-widest">Sincronizando Ledger...</p>
           </div>
         ) : activeView === 'finance' ? (
+          /* VISTA FINANCIERA */
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
@@ -516,7 +507,9 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
             </section>
           </>
         ) : (
+          /* VISTA DE CUENTA - REDISEÑO ANCHO COMPLETO */
           <div className="flex flex-col gap-8">
+            {/* Información Personal */}
             <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-12 relative overflow-hidden">
               <div className="flex items-center gap-4 mb-12">
                  <div className="p-3 bg-[#faffd1] rounded-2xl text-accent border border-[#e5ebbc] shadow-sm"><User size={24} /></div>
@@ -524,6 +517,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                 {/* Avatar Izquierda */}
                  <div className="lg:col-span-2 flex flex-col items-center">
                     <div className="relative group">
                       <div className="size-32 rounded-full border-4 border-white shadow-xl overflow-hidden bg-accent flex items-center justify-center text-primary text-4xl font-black">
@@ -544,6 +538,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                     />
                  </div>
 
+                 {/* Formulario Derecha */}
                  <div className="lg:col-span-10 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1.5">
                        <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Nombre Completo</label>
@@ -619,7 +614,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               </div>
             </div>
 
-            {/* Seguridad Maestra */}
+            {/* Seguridad Maestra (Compacto) */}
             <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="flex items-center gap-6">
                 <div className="p-4 bg-accent rounded-2xl text-primary shadow-lg"><Lock size={28} /></div>
@@ -637,24 +632,14 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               </button>
             </div>
 
-            {/* REGISTRO DE CANAL PARA DISPERSIÓN */}
+            {/* REGISTRO DE CANAL PARA DISPERSIÓN DE UTILIDADES - ANCHO COMPLETO */}
             <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-12 relative overflow-hidden space-y-10">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-[#faffd1] rounded-2xl text-accent border border-[#e5ebbc] shadow-sm"><Wallet size={24} /></div>
                 <h2 className="text-2xl font-black text-accent tracking-tighter uppercase leading-none">Registro de Canal para Dispersión de Utilidades</h2>
               </div>
 
-              {accountError && (
-                <div className="bg-red-50 border border-red-100 p-6 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-2">
-                  <AlertCircle className="text-red-600 size-6" />
-                  <div className="space-y-1">
-                    <h4 className="text-red-900 font-black uppercase text-[10px] tracking-widest">Fallo de Comunicación</h4>
-                    <p className="text-red-700 text-xs font-bold">{accountError}</p>
-                  </div>
-                  <button onClick={syncProfileData} className="ml-auto px-4 py-2 bg-red-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest">Reintentar</button>
-                </div>
-              )}
-
+              {/* BANNER DE ADVERTENCIA */}
               <div className="bg-[#fff9f1] border border-[#ffead1] rounded-[24px] p-6 flex items-start gap-5">
                 <AlertTriangle className="text-[#f59e0b] shrink-0 mt-0.5" size={28} />
                 <div className="space-y-1">
@@ -662,27 +647,34 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   <p className="text-[11px] text-[#b45309] leading-relaxed font-bold">
                     Caishen Capital Group <span className="font-black">solo realizará depósitos a la tarjeta, cuenta bancaria o billetera registrada</span> en esta sección oficial. Los datos registrados deben coincidir plenamente con la titularidad legal del socio.
                   </p>
+                  <p className="text-[11px] text-[#b45309] font-black underline mt-1">Sin un método validado por el Comité, las solicitudes de liquidación NO PODRÁN SER PROCESADAS.</p>
                 </div>
               </div>
 
               {/* TABS DE MÉTODOS */}
               <div className="flex bg-surface-subtle p-1.5 rounded-2xl border border-surface-border w-fit">
-                {['debit', 'bank', 'crypto'].map((tab) => (
-                  <button 
-                    key={tab}
-                    onClick={() => setActiveWithdrawalTab(tab as any)}
-                    className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === tab ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
-                  >
-                    {tab === 'debit' && <CardIcon size={16} />}
-                    {tab === 'bank' && <Landmark size={16} />}
-                    {tab === 'crypto' && <Bitcoin size={16} />}
-                    {tab === 'debit' ? 'Tarjeta Débito' : tab === 'bank' ? 'Cuenta Bancaria' : 'Billetera Crypto'}
-                  </button>
-                ))}
+                <button 
+                  onClick={() => setActiveWithdrawalTab('debit')}
+                  className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'debit' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
+                >
+                  <CardIcon size={16} /> Tarjeta Débito
+                </button>
+                <button 
+                  onClick={() => setActiveWithdrawalTab('bank')}
+                  className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'bank' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
+                >
+                  <Landmark size={16} /> Cuenta Bancaria
+                </button>
+                <button 
+                  onClick={() => setActiveWithdrawalTab('crypto')}
+                  className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'crypto' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
+                >
+                  <Bitcoin size={16} /> Billetera Crypto
+                </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                {/* CARD PREVIEW */}
+                {/* CARD PREVIEW - LATERAL EXPANDIDO */}
                 <div className="lg:col-span-5 space-y-6">
                   <div className="relative aspect-[1.6/1] w-full rounded-[36px] overflow-hidden shadow-2xl group border border-white/5">
                     <div className={`absolute inset-0 transition-all duration-700 ${
@@ -691,6 +683,10 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                       'bg-gradient-to-br from-[#2d2c3e] to-[#111827]'
                     }`}></div>
                     
+                    {activeWithdrawalTab === 'crypto' && <Bitcoin size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
+                    {activeWithdrawalTab === 'bank' && <Landmark size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
+                    {activeWithdrawalTab === 'debit' && <CardIcon size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
+
                     <div className="relative z-10 p-10 h-full flex flex-col justify-between text-white">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
@@ -700,7 +696,11 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                              <CardIcon size={24} className="text-primary" />}
                           </div>
                           <div>
-                             <p className="text-[10px] font-black uppercase tracking-widest text-white/50 leading-none mb-1">{activeWithdrawalTab.toUpperCase()}</p>
+                             <p className="text-[10px] font-black uppercase tracking-widest text-white/50 leading-none mb-1">{
+                               activeWithdrawalTab === 'crypto' ? 'BILLETERA CRYPTO' : 
+                               activeWithdrawalTab === 'bank' ? 'CUENTA BANCARIA' : 
+                               'TARJETA DÉBITO'
+                             }</p>
                              <h3 className="font-black text-xl tracking-tight uppercase leading-none">
                                {activeWithdrawalTab === 'crypto' ? formData.cryptoCurrency : 
                                 activeWithdrawalTab === 'bank' ? formData.bankName : 
@@ -727,19 +727,29 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                               </p>
                            </div>
                         </div>
+                        <div className="flex justify-between items-end border-t border-white/5 pt-5">
+                           <div className="space-y-1">
+                              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 block font-bold">RED / TIPO</span>
+                              <p className="font-black text-[12px] uppercase tracking-widest">{activeWithdrawalTab === 'crypto' ? formData.cryptoNetwork : formData.accountType}</p>
+                           </div>
+                           <div className="text-right space-y-1">
+                              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 block font-bold">PROCEDENCIA</span>
+                              <p className="font-black text-[12px] uppercase tracking-widest text-primary">{activeWithdrawalTab === 'crypto' ? (formData.exchange || 'BINANCE') : formData.country}</p>
+                           </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* FORMULARIO */}
+                {/* FORMULARIO DE REGISTRO - LATERAL EXPANDIDO */}
                 <div className="lg:col-span-7 space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 md:col-span-2">
                        <label className="text-[10px] font-black text-accent uppercase tracking-widest ml-1">Nombre del Titular</label>
                        <div className="relative">
                           <User className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted/40" size={18} />
-                          <input type="text" value={formData.holderName} readOnly disabled className="w-full bg-surface-subtle border border-surface-border rounded-2xl pl-14 pr-5 py-4 text-sm font-bold text-text-muted cursor-not-allowed shadow-sm opacity-70" />
+                          <input type="text" value={user.name} readOnly disabled className="w-full bg-surface-subtle border border-surface-border rounded-2xl pl-14 pr-5 py-4 text-sm font-bold text-text-muted cursor-not-allowed shadow-sm opacity-70" />
                        </div>
                     </div>
 
@@ -804,6 +814,35 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                      </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-accent uppercase tracking-widest ml-1">{activeWithdrawalTab === 'crypto' ? 'Proveedor de Custodia (Exchange)' : 'País de Residencia'}</label>
+                       <div className="relative">
+                          <Globe className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted/40" size={18} />
+                          <input 
+                            type="text" 
+                            value={activeWithdrawalTab === 'crypto' ? formData.exchange : formData.country} 
+                            onChange={(e) => setFormData({...formData, [activeWithdrawalTab === 'crypto' ? 'exchange' : 'country']: e.target.value})} 
+                            className="w-full bg-white border border-surface-border rounded-2xl pl-14 pr-5 py-4 text-sm font-bold text-accent focus:border-primary transition-all shadow-sm" 
+                            placeholder={activeWithdrawalTab === 'crypto' ? "Ej. Binance, Ledger" : "Ej. Colombia"} 
+                          />
+                       </div>
+                    </div>
+                    {activeWithdrawalTab !== 'crypto' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-accent uppercase tracking-widest ml-1">Código SWIFT / BIC (Opcional)</label>
+                        <input type="text" value={formData.swiftCode} onChange={(e) => setFormData({...formData, swiftCode: e.target.value})} className="w-full bg-white border border-surface-border rounded-2xl px-5 py-4 text-sm font-bold text-accent focus:border-primary transition-all shadow-sm" placeholder="Opcional" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-[#f1f8ff] border border-[#d1e9ff] rounded-[24px] p-6 flex items-start gap-5">
+                    <InfoIcon className="text-[#3b82f6] shrink-0 mt-0.5" size={24} />
+                    <p className="text-[11px] text-[#1e40af] font-bold leading-relaxed">
+                      <span className="font-black">Verificación de Protocolo:</span> Asegúrese de seleccionar la red correspondiente al activo enviado. La selección errónea de red en dispersiones crypto resultará en la <span className="text-red-600">pérdida irreversible de fondos</span>.
+                    </p>
+                  </div>
+                  
                   <div className="flex justify-end pt-4">
                      <button 
                        onClick={() => setShowConfirm(true)}
@@ -821,10 +860,59 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         )}
       </main>
 
-      {/* MODAL CONFIRMAR */}
+      {/* MODALES IGUALES */}
+      {showPinChange && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => !isUpdatingPin && setShowPinChange(false)} />
+          <div className={`relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-10 flex flex-col items-center animate-in zoom-in-95 ${pinError ? 'animate-shake' : ''}`}>
+            {!isUpdatingPin && !successPinChange && <button onClick={() => setShowPinChange(false)} className="absolute top-6 right-6 text-text-muted hover:bg-gray-100 rounded-full p-2"><X size={20} /></button>}
+            <div className={`size-20 ${successPinChange ? 'bg-green-500' : 'bg-accent'} rounded-[24px] flex items-center justify-center text-primary shadow-2xl mb-6`}>
+              {successPinChange ? <CheckCircle2 size={32} className="text-white" /> : <KeyRound size={32} />}
+            </div>
+            {successPinChange ? (
+              <div className="text-center">
+                <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-1">PIN Actualizado</h3>
+                <p className="text-[10px] text-green-600 font-black uppercase tracking-widest">Sincronización con Ledger Exitosa</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-1">
+                  {pinStep === 'verify' ? 'PIN Actual' : pinStep === 'new' ? 'Nuevo PIN' : 'Confirmar PIN'}
+                </h3>
+                <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-8 text-center px-4 leading-relaxed">
+                  {pinStep === 'verify' ? 'Valide su identidad' : pinStep === 'new' ? 'Defina sus 4 dígitos' : 'Repita su nuevo PIN'}
+                </p>
+                <div className="flex justify-center gap-3 mb-10 min-h-[56px]">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className={`size-14 rounded-2xl border-2 flex items-center justify-center transition-all ${pinBuffer.length > i ? 'border-primary bg-primary/5' : 'border-surface-border'}`}>
+                      {pinBuffer.length > i && <div className="size-3 bg-accent rounded-full animate-in zoom-in" />}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-3 w-full mb-6">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <button key={num} onClick={() => handlePinDigit(num.toString())} className="h-16 rounded-2xl bg-surface-subtle text-accent font-black text-xl hover:bg-primary transition-all active:scale-95 disabled:opacity-50" disabled={isUpdatingPin}>{num}</button>
+                  ))}
+                  <button onClick={() => setPinBuffer(prev => prev.slice(0, -1))} className="h-16 rounded-2xl bg-red-50 text-red-600 font-black text-[10px] uppercase tracking-widest" disabled={isUpdatingPin}>Del</button>
+                  <button onClick={() => handlePinDigit('0')} className="h-16 rounded-2xl bg-surface-subtle text-accent font-black text-xl hover:bg-primary transition-all active:scale-95" disabled={isUpdatingPin}>0</button>
+                  <button 
+                    onClick={confirmPinUpdate} 
+                    disabled={isUpdatingPin || pinBuffer.length < 4} 
+                    className="h-16 rounded-2xl bg-accent text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-30"
+                  >
+                    {isUpdatingPin ? <RefreshCw className="animate-spin" size={20} /> : 'OK'}
+                  </button>
+                </div>
+                {pinError && <p className="text-red-600 text-[10px] font-black uppercase tracking-widest">{pinError}</p>}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {showConfirm && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in" onClick={() => !isSavingAccount && setShowConfirm(false)} />
+          <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowConfirm(false)} />
           <div className="relative w-full max-w-sm bg-white rounded-[40px] p-10 flex flex-col items-center text-center animate-in zoom-in-95">
             <div className="size-20 bg-primary/10 rounded-3xl flex items-center justify-center text-accent shadow-sm border border-primary/20 mb-6"><ShieldCheck size={40} /></div>
             <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-2">Confirmar Registro Maestro</h3>
@@ -837,15 +925,14 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         </div>
       )}
 
-      {/* MODAL ÉXITO */}
       {showRequestSuccess && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowRequestSuccess(false)} />
           <div className="relative w-full max-w-sm bg-white rounded-[40px] p-10 flex flex-col items-center text-center animate-in zoom-in-95">
             <div className="size-20 bg-green-500 rounded-3xl flex items-center justify-center text-white shadow-xl mb-6"><CheckCircle2 size={40} /></div>
-            <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-2">Registro Enviado</h3>
-            <p className="text-text-secondary text-xs font-medium leading-relaxed mb-8">Los datos han sido recibidos satisfactoriamente por el motor de pagos corporativo.</p>
-            <button onClick={() => setShowRequestSuccess(false)} className="w-full py-4 bg-accent text-white font-black text-[10px] uppercase tracking-widest rounded-2xl">Entendido</button>
+            <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-2">Solicitud Enviada</h3>
+            <p className="text-text-secondary text-xs font-medium leading-relaxed mb-8">Su petición ha sido registrada para validación técnica por el Comité de Cumplimiento.</p>
+            <button onClick={() => setShowRequestSuccess(false)} className="w-full py-4 bg-accent text-white font-black text-[10px] uppercase tracking-widest rounded-2xl">Finalizar Gestión</button>
           </div>
         </div>
       )}

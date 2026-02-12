@@ -3,8 +3,8 @@ import { Asset, Transaction, Report, User, CorporateNotice, AdminNotification } 
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
-  // URL ACTUALIZADA CON LA NUEVA IMPLEMENTACIÓN PROPORCIONADA
-  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbxbd9_bBKc85CR4oyHvdmj_LQx0St3j1t-1--tzwQ8iGR_2CgBLQcCHw9f-CpciDXJlpw/exec',
+  // URL REAL actualizada con la implementación final del usuario
+  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbw52eRJHauh8nuu-rMiWzpPhjtoAJSO8zok4wb7gbVQrMfCp5Trw9jYGuYuQ_V4XAepwg/exec',
   TAB_NAME: 'CONFIG_MAESTRA'
 };
 

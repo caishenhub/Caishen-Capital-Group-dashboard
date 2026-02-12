@@ -4,8 +4,7 @@
  * Cliente aislado para la gestión de credenciales y datos maestros de socios.
  */
 
-// URL ACTUALIZADA SEGÚN LA NUEVA IMPLEMENTACIÓN DEL USUARIO
-const SECURITY_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxbd9_bBKc85CR4oyHvdmj_LQx0St3j1t-1--tzwQ8iGR_2CgBLQcCHw9f-CpciDXJlpw/exec';
+const SECURITY_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyjcgbOFYd3BnOstoI25WycHJY-h6ybeTQRqWHQC23dUiHVsTXZBlb1646AJs0ARHmvlQ/exec';
 
 export interface ProfileUpdateData {
   TELEFONO?: string;
