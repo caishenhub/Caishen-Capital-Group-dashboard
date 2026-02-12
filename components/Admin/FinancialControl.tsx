@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
@@ -12,7 +13,6 @@ import {
   CloudLightning,
   RefreshCw,
   AlertTriangle,
-  // Fix: Imported ShieldCheck to resolve 'Cannot find name' error
   ShieldCheck
 } from 'lucide-react';
 import { adminSetYield, adminUpdateGlobalPayoutStatus, getStoredYield, getPayoutStatus } from '../../constants';
@@ -42,11 +42,8 @@ const FinancialControl: React.FC = () => {
     const numericYield = parseFloat(yieldValue) / 100;
     
     try {
-      // 1. Guardar localmente para persistencia inmediata en la UI
       adminSetYield(selectedYear, selectedMonth, numericYield);
       
-      // 2. Intentar guardar en Google Sheets (Nube)
-      // Enviamos el objeto con el formato que espera el Apps Script para actualizar la fila
       const cloudData = {
         ANIO: selectedYear,
         MES: selectedMonth + 1,
@@ -118,7 +115,7 @@ const FinancialControl: React.FC = () => {
           <select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="bg-transparent border-none text-xs font-black uppercase focus:ring-0 cursor-pointer px-4"
+            className="bg-transparent border-none text-xs font-black uppercase focus:ring-0 cursor-pointer px-4 appearance-none bg-none"
           >
             {[2022, 2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -126,7 +123,7 @@ const FinancialControl: React.FC = () => {
           <select 
             value={selectedMonth} 
             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="bg-transparent border-none text-xs font-black uppercase focus:ring-0 cursor-pointer px-4"
+            className="bg-transparent border-none text-xs font-black uppercase focus:ring-0 cursor-pointer px-4 appearance-none bg-none"
           >
             {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
           </select>

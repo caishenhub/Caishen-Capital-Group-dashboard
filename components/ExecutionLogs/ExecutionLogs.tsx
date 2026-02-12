@@ -42,7 +42,6 @@ const ExecutionLogs: React.FC = () => {
 
   useEffect(() => {
     syncData(activeMarket);
-    // Auto-sync cada 3 minutos para el libro de ejecuciones
     const interval = setInterval(() => syncData(activeMarket), 180000);
     return () => clearInterval(interval);
   }, [activeMarket]);
@@ -78,7 +77,6 @@ const ExecutionLogs: React.FC = () => {
             </div>
             <h1 className="text-accent text-2xl md:text-4xl font-black tracking-tighter uppercase leading-tight">Libro de Ejecuciones</h1>
             
-            {/* BADGE LIVE MINIMALISTA */}
             <button 
               onClick={() => syncData(activeMarket)}
               disabled={isLoading}
@@ -97,7 +95,6 @@ const ExecutionLogs: React.FC = () => {
         </div>
       </header>
 
-      {/* Selector de Mercados */}
       <div className="flex items-center gap-2 bg-white p-1.5 rounded-3xl border border-surface-border shadow-sm w-fit overflow-x-auto hide-scrollbar max-w-full">
         {markets.map((m) => (
           <button
@@ -115,7 +112,6 @@ const ExecutionLogs: React.FC = () => {
         ))}
       </div>
 
-      {/* Panel de Filtros y Control */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-12 bg-white rounded-3xl border border-surface-border p-6 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-center">
           
@@ -150,7 +146,7 @@ const ExecutionLogs: React.FC = () => {
               <select 
                 value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 bg-surface-subtle border border-surface-border rounded-2xl text-[10px] font-black uppercase appearance-none cursor-pointer focus:ring-primary focus:border-primary"
+                className="w-full pl-10 pr-10 py-3 bg-surface-subtle border border-surface-border rounded-2xl text-[10px] font-black uppercase appearance-none bg-none cursor-pointer focus:ring-primary focus:border-primary"
               >
                 <option>Todas</option>
                 <option>Buy</option>
@@ -162,7 +158,6 @@ const ExecutionLogs: React.FC = () => {
         </div>
       </div>
 
-      {/* Vista de Tabla */}
       <div className="bg-white border border-surface-border rounded-[32px] overflow-hidden shadow-premium relative min-h-[500px]">
         {isLoading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-4">
@@ -223,7 +218,6 @@ const ExecutionLogs: React.FC = () => {
           </table>
         </div>
 
-        {/* Vista Móvil */}
         <div className="lg:hidden p-4 space-y-4">
           {filteredData.map((ex, idx) => (
             <div key={ex.ticket || idx} className="bg-white border-2 border-gray-100 rounded-3xl p-5 shadow-sm space-y-4">

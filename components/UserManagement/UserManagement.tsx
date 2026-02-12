@@ -34,7 +34,6 @@ const UserManagement: React.FC = () => {
     setIsLoading(true);
     setFetchError(null);
     try {
-      // Cambio de nombre de la hoja para consistencia institucional
       const data = await fetchTableData('LIBRO_ACCIONISTAS');
       
       if (!data || data.length === 0) {
@@ -219,7 +218,7 @@ const UserManagement: React.FC = () => {
           <div className="md:col-span-4 relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted size-4" />
             <select 
-              className="w-full pl-10 pr-8 py-3 rounded-xl border-surface-border text-sm focus:border-accent focus:ring-accent text-accent bg-surface-subtle/50 appearance-none cursor-pointer font-bold transition-all"
+              className="w-full pl-10 pr-8 py-3 rounded-xl border-surface-border text-sm focus:border-accent focus:ring-accent text-accent bg-surface-subtle/50 appearance-none bg-none cursor-pointer font-bold transition-all"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
