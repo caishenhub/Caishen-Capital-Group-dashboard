@@ -341,37 +341,23 @@ export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> 
   try {
     const data = await fetchTableData('REPORTES_ADMIN', ignoreCache);
     if (!data || data.length === 0) return MOCK_REPORTS;
-    
-    // Procesamos con timestamp para un ordenamiento exacto por fecha
-    const reports: (Report & { _timestamp: number })[] = data
+    const reports: Report[] = data
       .filter(row => norm(findValue(row, ['STATUS', 'status'])) === 'publicado')
       .map(row => {
-        const rawDate = findValue(row, ['FECHA_PUBLICACION', 'date']);
-        const parsedDate = new Date(rawDate);
         return {
           id: String(findValue(row, ['ID_REPORTE', 'id']) || Math.random().toString()),
           title: String(findValue(row, ['TITULO', 'title']) || 'Reporte Institucional'),
-          date: formatSheetDate(rawDate),
+          date: formatSheetDate(findValue(row, ['FECHA_PUBLICACION', 'date'])),
           category: String(findValue(row, ['CATEGORIA', 'category']) || 'General') as any,
           summary: String(findValue(row, ['DESCRIPCION_CORTA', 'summary']) || ''),
           highlight: String(findValue(row, ['TEXTO_DESTACADO', 'highlight']) || ''),
           notaImportante: String(findValue(row, ['NOTA_IMPORTANTE', 'note']) || ''),
           visibleEnTodos: norm(findValue(row, ['VISIBLE_EN_TODOS', 'visible'])) === 'si',
           ordenForzado: parseSheetNumber(findValue(row, ['ORDEN_FORZADO', 'order'])),
-          color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || ''),
-          _timestamp: isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime()
+          color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || '')
         };
       });
-
-    // Lógica de ordenamiento: 
-    // 1. ORDEN_FORZADO descendente (prioridad manual).
-    // 2. _timestamp descendente (los más nuevos primero).
-    return reports.sort((a, b) => {
-      if (b.ordenForzado !== a.ordenForzado) {
-        return b.ordenForzado - a.ordenForzado;
-      }
-      return b._timestamp - a._timestamp;
-    });
+    return reports.sort((a, b) => (b.ordenForzado || 0) - (a.ordenForzado || 0));
   } catch (error) {
     return MOCK_REPORTS;
   }
