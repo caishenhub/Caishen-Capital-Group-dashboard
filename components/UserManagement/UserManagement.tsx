@@ -43,14 +43,14 @@ const UserManagement: React.FC = () => {
       }
 
       const mapped = data.map((u, idx) => {
-        const uid = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio', 'id', 'identificador']) || '').trim();
-        const name = String(findValue(u, ['NOMBRE_COMPLETO', 'name', 'nombre', 'accionista']) || 'Socio Institucional');
-        const email = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo', 'e-mail']) || '---');
-        const role = String(findValue(u, ['ROL_SOCIO', 'role', 'rol', 'tipo']) || 'Accionista');
-        const status = String(findValue(u, ['ESTATUS_SOCIO', 'status', 'estado', 'estatus']) || 'Activo');
-        const shares = parseSheetNumber(findValue(u, ['ACCIONES_POSEIDAS', 'shares', 'acciones', 'cantidad']));
-        const pin = String(findValue(u, ['PIN_ACCESO', 'pin', 'clave', 'password']) || '0000');
-        const registrationDate = findValue(u, ['FECHA_INGRESO', 'fecha', 'registro', 'ingreso', 'date_joined']) || null;
+        // Mapeo basado estrictamente en las cabeceras oficiales proporcionadas
+        const uid = String(findValue(u, ['UID_SOCIO']) || '').trim();
+        const name = String(findValue(u, ['NOMBRE_COMPLETO']) || 'Socio Institucional');
+        const email = String(findValue(u, ['EMAIL_SOCIO']) || '---');
+        const status = String(findValue(u, ['ESTATUS_SOCIO']) || 'Activo');
+        const shares = parseSheetNumber(findValue(u, ['ACCIONES_POSEIDAS']));
+        const pin = String(findValue(u, ['PIN_ACCESO']) || '0000');
+        const registrationDate = findValue(u, ['FECHA_INGRESO']) || null;
         
         const initials = name.split(' ').filter(n => n).map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -59,7 +59,7 @@ const UserManagement: React.FC = () => {
           uid,
           name,
           email,
-          role,
+          role: 'Accionista', // Valor por defecto ya que no está en la lista de columnas
           status,
           shares,
           pin,

@@ -142,7 +142,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         return norm(rowUid) === targetUidNorm;
       });
 
-      const freshUser = sociosData.find(u => norm(findValue(u, ['UID_SOCIO', 'uid'])) === targetUidNorm);
+      const freshUser = sociosData.find(u => norm(findValue(u, ['UID_SOCIO'])) === targetUidNorm);
       
       setDividends(userDividends);
       setConfig(masterConfig[0] || {});
@@ -257,6 +257,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     setIsUpdatingProfile(true);
     setProfileSuccess(false);
     try {
+      // Cabeceras exactas de la hoja LIBRO_ACCIONISTAS
       const updatePayload: ProfileUpdateData = {
         TELEFONO: formData.phone,
         NUM_DOCUMENTO: formData.docNumber,

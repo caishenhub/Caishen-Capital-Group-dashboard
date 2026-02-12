@@ -1,10 +1,12 @@
 
 /**
  * CCG SECURITY & PROFILE CLIENT v2.2
- * Cliente aislado para la gestión de credenciales y datos maestros de socios.
+ * Cliente unificado con el nuevo Master Engine.
  */
 
-const SECURITY_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyjcgbOFYd3BnOstoI25WycHJY-h6ybeTQRqWHQC23dUiHVsTXZBlb1646AJs0ARHmvlQ/exec';
+import { GOOGLE_CONFIG } from '../constants';
+
+const SECURITY_WEBAPP_URL = GOOGLE_CONFIG.SCRIPT_API_URL;
 
 export interface ProfileUpdateData {
   TELEFONO?: string;
@@ -15,17 +17,9 @@ export interface ProfileUpdateData {
   AVATAR_URL?: string;
 }
 
-/**
- * Actualiza el PIN de acceso de un socio en el Libro de Accionistas.
- */
 export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ success: boolean; error?: string }> {
   if (!uid) return { success: false, error: 'UID de socio requerido' };
   
-  // Validación de longitud 4 dígitos
-  if (!/^\d{4}$/.test(newPin)) {
-    return { success: false, error: 'El PIN debe tener 4 dígitos numéricos' };
-  }
-
   const payload = {
     action: 'UPDATE_PIN',
     uid: uid,
@@ -37,27 +31,18 @@ export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ succe
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
 
     const result = await response.json();
-    return { 
-      success: result.success === true || result.status === 'success', 
-      error: result.error || result.message 
-    };
+    return { success: result.success === true || result.status === 'success', error: result.error };
   } catch (e) {
-    console.error('CCG Security Error:', e);
-    return { success: false, error: 'Error de comunicación con el servidor de seguridad' };
+    return { success: false, error: 'Error de comunicación' };
   }
 }
 
-/**
- * Actualiza los datos informativos del perfil en el Libro de Accionistas.
- */
-export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Promise<{ success: boolean; error?: string; updated?: string[] }> {
+export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Promise<{ success: boolean; error?: string }> {
   if (!uid) return { success: false, error: 'UID de socio requerido' };
 
   const payload = {
@@ -71,20 +56,13 @@ export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Pr
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
 
     const result = await response.json();
-    return { 
-      success: result.success === true || result.status === 'success', 
-      error: result.error || result.message,
-      updated: result.updated
-    };
+    return { success: result.success === true || result.status === 'success', error: result.error };
   } catch (e) {
-    console.error('CCG Profile Update Error:', e);
-    return { success: false, error: 'Error al actualizar el perfil institucional' };
+    return { success: false, error: 'Error al actualizar perfil' };
   }
 }
