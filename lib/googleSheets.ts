@@ -68,29 +68,13 @@ export interface StrategicReportSection {
 
 export type MarketCategory = 'forex' | 'stocks' | 'commodities';
 
+const FOREX_API_URL = 'https://script.google.com/macros/s/AKfycbyJwdqsA0fTS7HB4BAMWTO7_gogMAq1SzdvDJOAUg8tWA5G3dqpm7m4LBTwRdzDHVAY/exec'; 
+const COMMODITIES_API_URL = 'https://script.google.com/macros/s/AKfycbyIKYItxgt7yRPTdP84d1QGxsQejGF2dQj5M9VFSSZBiDsSwsMsNRIGUjY5wXFgJDOjMQ/exec';
+const STOCKS_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL; 
+
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
 const inFlightRequests: Record<string, Promise<any[]>> = {};
 const CACHE_DURATION = 1000 * 60 * 10;
-
-// --- MOTOR DE PETICIONES RESILIENTE PARA GOOGLE APPS SCRIPT ---
-async function robustFetch(url: string, options: RequestInit = {}, retries = 3): Promise<Response> {
-  let lastError: any;
-  for (let i = 0; i < retries; i++) {
-    try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 10000); // 10s timeout
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(id);
-      if (response.ok) return response;
-      throw new Error(`HTTP ${response.status}`);
-    } catch (err) {
-      lastError = err;
-      console.warn(`Intento de conexión ${i + 1} fallido:`, url);
-      if (i < retries - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    }
-  }
-  throw lastError;
-}
 
 export const norm = (str: any): string => 
   String(str || '')
@@ -118,18 +102,28 @@ export function parseSheetNumber(val: any): number {
 function formatSheetDate(dateVal: any): string {
   if (!dateVal) return '';
   const date = new Date(dateVal);
-  if (isNaN(date.getTime())) return String(dateVal).replace(/\./g, '');
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\./g, '');
+  if (isNaN(date.getTime())) {
+    return String(dateVal).replace(/\./g, '');
+  }
+  return date.toLocaleDateString('es-ES', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric' 
+  }).replace(/\./g, '');
 }
 
 export const warmUpCache = async () => {
-  const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO'];
+  const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO', 'KPI_PORTAFOLIO', 'ESTRUCTURA_PORTAFOLIO'];
   return Promise.allSettled(tabs.map(tab => fetchTableData(tab)));
 };
 
 export async function checkConnection(): Promise<boolean> {
+  if (!GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20) return false;
   try {
-    const res = await robustFetch(`${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=PING`, { method: 'GET' }, 1);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=PING`, { signal: controller.signal });
+    clearTimeout(timeout);
     return res.ok;
   } catch (e) {
     return false;
@@ -141,15 +135,23 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   if (!ignoreCache && prefetchCache[tabName]) {
     const cached = prefetchCache[tabName];
-    if (Date.now() - cached.timestamp < CACHE_DURATION) return cached.data;
+    if (Date.now() - cached.timestamp < CACHE_DURATION) {
+      if (Date.now() - cached.timestamp > 1000 * 60) {
+        refreshInBackground(tabName);
+      }
+      return cached.data;
+    }
   }
 
-  if (inFlightRequests[tabName]) return inFlightRequests[tabName];
+  if (inFlightRequests[tabName]) {
+    return inFlightRequests[tabName];
+  }
 
   const fetchPromise = (async () => {
     try {
       const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
-      const response = await robustFetch(url, { method: 'GET' });
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) throw new Error(`Status: ${response.status}`);
       const json = await response.json();
       const rows = Array.isArray(json) ? json : (json.rows || []);
       
@@ -162,7 +164,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
       prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
       return processedData;
     } catch (err) {
-      console.error(`Fallo crítico al sincronizar ${tabName}:`, err);
+      console.error(`Error fetching ${tabName}:`, err);
       return prefetchCache[tabName]?.data || [];
     } finally {
       delete inFlightRequests[tabName];
@@ -171,6 +173,22 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   inFlightRequests[tabName] = fetchPromise;
   return fetchPromise;
+}
+
+async function refreshInBackground(tabName: string) {
+  if (inFlightRequests[tabName]) return;
+  try {
+    const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&cache_bust=${Date.now()}`;
+    const response = await fetch(url);
+    const json = await response.json();
+    const rows = Array.isArray(json) ? json : (json.rows || []);
+    const processedData = rows.map((row: any) => {
+      const cleanRow: any = {};
+      Object.keys(row).forEach(key => { cleanRow[key.trim()] = row[key]; });
+      return cleanRow;
+    });
+    prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+  } catch (e) { }
 }
 
 export async function fetchStrategicReport(ignoreCache = false): Promise<StrategicReportSection[]> {
@@ -224,35 +242,39 @@ export async function fetchLiquidityProtocol(ignoreCache = false): Promise<Liqui
 
 export async function fetchCorporateNotices(ignoreCache = false): Promise<CorporateNotice[]> {
   const data = await fetchTableData('AVISOS_CORPORATIVOS', ignoreCache);
-  return data.map((row, idx) => ({
-    id: String(findValue(row, ['ID', 'id']) || `notice-${idx}`),
-    title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Aviso Corporativo'),
-    date: formatSheetDate(findValue(row, ['FECHA', 'date', 'fecha'])), 
-    description: String(findValue(row, ['DESCRIPCION', 'description', 'descripcion']) || ''),
-    type: (findValue(row, ['TIPO', 'type', 'tipo']) || 'Info') as any,
-    fullContent: String(findValue(row, ['CONTENIDO', 'content', 'contenido']) || ''),
-    imageUrl: String(findValue(row, ['IMAGEN', 'image', 'imagen', 'image_url']) || '')
-  })).reverse();
+  return data.map((row, idx) => {
+    const rawDate = findValue(row, ['FECHA', 'date', 'fecha']);
+    return {
+      id: String(findValue(row, ['ID', 'id']) || `notice-${idx}`),
+      title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Aviso Corporativo'),
+      date: formatSheetDate(rawDate), 
+      description: String(findValue(row, ['DESCRIPCION', 'description', 'descripcion']) || ''),
+      type: (findValue(row, ['TIPO', 'type', 'tipo']) || 'Info') as any,
+      fullContent: String(findValue(row, ['CONTENIDO', 'content', 'contenido']) || ''),
+      imageUrl: String(findValue(row, ['IMAGEN', 'image', 'imagen', 'image_url']) || '')
+    };
+  }).reverse();
 }
 
 export async function publishNotice(notice: Partial<CorporateNotice>): Promise<{success: boolean}> {
+  const payload = {
+    action: 'append',
+    tab: 'AVISOS_CORPORATIVOS',
+    data: {
+      ID: `N-${Date.now()}`,
+      FECHA: new Date().toISOString(),
+      TITULO: notice.title,
+      DESCRIPCION: notice.description,
+      TIPO: notice.type || 'Info',
+      CONTENIDO: notice.fullContent || notice.description,
+      IMAGEN: notice.imageUrl || ''
+    }
+  };
   try {
-    await robustFetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
+    await fetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'append',
-        tab: 'AVISOS_CORPORATIVOS',
-        data: {
-          ID: `N-${Date.now()}`,
-          FECHA: new Date().toISOString(),
-          TITULO: notice.title,
-          DESCRIPCION: notice.description,
-          TIPO: notice.type || 'Info',
-          CONTENIDO: notice.fullContent || notice.description,
-          IMAGEN: notice.imageUrl || ''
-        }
-      })
+      body: JSON.stringify(payload)
     });
     return { success: true };
   } catch (e) {
@@ -260,30 +282,35 @@ export async function publishNotice(notice: Partial<CorporateNotice>): Promise<{
   }
 }
 
+/**
+ * Guarda el método de dispersión con la nueva estructura de columnas profesional.
+ * Mapeo exacto: UID_SOCIO, TIPO_METODO, TITULAR_NOMBRE, TITULAR_DOC_TIPO, TITULAR_DOC_NUM, INSTITUCION_NOMBRE, CUENTA_NUMERO, TIPO_CUENTA_RED, PAIS_EXCHANGE, CODIGO_SWIFT_BIC, FECHA_REGISTRO, ESTATUS_VERIFICACION, SOLICITUDES_CAMBIO
+ */
 export async function saveShareholderAccount(uid: string, accountData: any): Promise<{success: boolean}> {
+  const payload = {
+    action: 'append',
+    tab: 'DATOS_PAGO_SOCIOS',
+    data: {
+      UID_SOCIO: uid,
+      TIPO_METODO: accountData.type,
+      TITULAR_NOMBRE: accountData.holderName || '',
+      TITULAR_DOC_TIPO: accountData.docType || '',
+      TITULAR_DOC_NUM: accountData.docNumber || '',
+      INSTITUCION_NOMBRE: accountData.institution,
+      CUENTA_NUMERO: accountData.identifier,
+      TIPO_CUENTA_RED: accountData.network,
+      PAIS_EXCHANGE: accountData.platform,
+      CODIGO_SWIFT_BIC: accountData.swiftCode || 'N/A',
+      FECHA_REGISTRO: new Date().toISOString(),
+      ESTATUS_VERIFICACION: 'PENDIENTE',
+      SOLICITUDES_CAMBIO: ''
+    }
+  };
   try {
-    await robustFetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
+    await fetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'append',
-        tab: 'DATOS_PAGO_SOCIOS',
-        data: {
-          UID_SOCIO: uid,
-          TIPO_METODO: accountData.type,
-          TITULAR_NOMBRE: accountData.holderName || '',
-          TITULAR_DOC_TIPO: accountData.docType || '',
-          TITULAR_DOC_NUM: accountData.docNumber || '',
-          INSTITUCION_NOMBRE: accountData.institution,
-          CUENTA_NUMERO: accountData.identifier,
-          TIPO_CUENTA_RED: accountData.network,
-          PAIS_EXCHANGE: accountData.platform,
-          CODIGO_SWIFT_BIC: accountData.swiftCode || 'N/A',
-          FECHA_REGISTRO: new Date().toISOString(),
-          ESTATUS_VERIFICACION: 'PENDIENTE',
-          SOLICITUDES_CAMBIO: ''
-        }
-      })
+      body: JSON.stringify(payload)
     });
     return { success: true };
   } catch (e) {
@@ -292,15 +319,19 @@ export async function saveShareholderAccount(uid: string, accountData: any): Pro
 }
 
 export async function logAccountChangeRequest(uid: string, currentAccount: string): Promise<{success: boolean}> {
+  const payload = {
+    action: 'update',
+    tab: 'DATOS_PAGO_SOCIOS',
+    data: {
+      UID_SOCIO: uid,
+      SOLICITUDES_CAMBIO: `Solicitud de modificación enviada el ${new Date().toLocaleString('es-ES')}`
+    }
+  };
   try {
-    await robustFetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
+    await fetch(GOOGLE_CONFIG.SCRIPT_API_URL, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'update',
-        tab: 'DATOS_PAGO_SOCIOS',
-        data: { UID_SOCIO: uid, SOLICITUDES_CAMBIO: `Solicitud de modificación enviada el ${new Date().toLocaleString('es-ES')}` }
-      })
+      body: JSON.stringify(payload)
     });
     return { success: true };
   } catch (e) {
@@ -325,32 +356,70 @@ export async function fetchShareholderAccount(uid: string): Promise<any | null> 
   const requests = String(findValue(record, ['SOLICITUDES_CAMBIO', 'solicitud']) || '');
 
   return {
-    type, institution, account, network, platform, status,
+    type,
+    institution,
+    account,
+    network,
+    platform,
+    status,
     requestPending: requests.toLowerCase().includes('solicitud'),
     holderInfo: type === 'CRYPTO' ? `Wallet: ${account.slice(0, 10)}...` : `${holder} (${docNum})`
   };
+}
+
+function normalizeSections(rawJson: string): ReportSection[] {
+  if (!rawJson || rawJson.trim() === '') return [];
+  let sanitized = rawJson.trim();
+  try {
+    const parsed = JSON.parse(sanitized);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(s => ({
+      titulo: s.titulo || s.title || 'Sección',
+      parrafos: Array.isArray(s.parrafos) ? s.parrafos : (s.content ? [s.content] : []),
+      items: Array.isArray(s.items) ? s.items : []
+    }));
+  } catch (e) {
+    return [{
+      titulo: 'Contenido del Comunicado',
+      parrafos: [sanitized.replace(/[\[\]\{\}"\\]/g, ' ').trim()],
+      items: []
+    }];
+  }
 }
 
 export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> {
   try {
     const data = await fetchTableData('REPORTES_ADMIN', ignoreCache);
     if (!data || data.length === 0) return MOCK_REPORTS;
-    return data
+    const reports: Report[] = data
       .filter(row => norm(findValue(row, ['STATUS', 'status'])) === 'publicado')
-      .map(row => ({
+      .map(row => {
+        const sectionsJson = String(findValue(row, ['SECCIONES_JSON', 'secciones_json']) || '');
+        const sections = normalizeSections(sectionsJson);
+        return {
           id: String(findValue(row, ['ID_REPORTE', 'id']) || Math.random().toString()),
           title: String(findValue(row, ['TITULO', 'title']) || 'Reporte Institucional'),
           date: formatSheetDate(findValue(row, ['FECHA_PUBLICACION', 'date'])),
           category: String(findValue(row, ['CATEGORIA', 'category']) || 'General') as any,
           summary: String(findValue(row, ['DESCRIPCION_CORTA', 'summary']) || ''),
           highlight: String(findValue(row, ['TEXTO_DESTACADO', 'highlight']) || ''),
-          sections: [], // Simplificado para esta vista
+          sections: sections,
           notaImportante: String(findValue(row, ['NOTA_IMPORTANTE', 'note']) || ''),
           visibleEnTodos: norm(findValue(row, ['VISIBLE_EN_TODOS', 'visible'])) === 'si',
           ordenForzado: parseSheetNumber(findValue(row, ['ORDEN_FORZADO', 'order'])),
           updatedAt: String(findValue(row, ['UPDATED_AT', 'updated']) || ''),
           color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || '')
-      })).sort((a, b) => (b.ordenForzado || 0) - (a.ordenForzado || 0));
+        };
+      });
+    return reports.sort((a, b) => {
+      if ((b.ordenForzado || 0) !== (a.ordenForzado || 0)) return (b.ordenForzado || 0) - (a.ordenForzado || 0);
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      const updateA = new Date(a.updatedAt || '').getTime();
+      const updateB = new Date(b.updatedAt || '').getTime();
+      return updateB - updateA;
+    });
   } catch (error) {
     return MOCK_REPORTS;
   }
@@ -367,18 +436,34 @@ export async function fetchPortfolioStructure(): Promise<PortfolioCategory[]> {
 
 export async function fetchPortfolioKpis(): Promise<PortfolioKpi[]> {
   const data = await fetchTableData('KPI_PORTAFOLIO');
-  return data.map(item => ({
+  return data.map(item => {
+    const rawVal = findValue(item, ['VALOR', 'value', 'dato']);
+    const numVal = parseSheetNumber(rawVal);
+    const type = String(findValue(item, ['TIPO', 'type']) || '').toLowerCase();
+    let displayValue = String(rawVal || '---');
+    if (numVal !== 0 && (type === 'exposicion' || type === 'diversificacion')) {
+      const pctValue = Math.abs(numVal) < 1 ? numVal * 100 : numVal;
+      displayValue = pctValue.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + '%';
+    } else if (typeof rawVal === 'number' && rawVal > 1) {
+      displayValue = rawVal.toLocaleString('es-ES');
+    }
+    return {
       label: String(findValue(item, ['ETIQUETA', 'label', 'titulo']) || ''),
-      value: String(findValue(item, ['VALOR', 'value', 'dato']) || '---'),
+      value: displayValue,
       sub: String(findValue(item, ['SUBTEXTO', 'subtext', 'descripcion']) || ''),
-      type: String(findValue(item, ['TIPO', 'type']) || '').toLowerCase() as any
-  }));
+      type: type as any
+    };
+  });
 }
 
 export async function updateTableData(tabName: string, data: any): Promise<{success: boolean, message: string}> {
   try {
-    await robustFetch(`${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&action=update`, {
-      method: 'POST', mode: 'no-cors', cache: 'no-cache', body: JSON.stringify(data)
+    const url = `${GOOGLE_CONFIG.SCRIPT_API_URL}?tab=${tabName}&action=update`;
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      body: JSON.stringify(data)
     });
     return { success: true, message: "Petición enviada." };
   } catch (e) {
@@ -390,55 +475,83 @@ export async function fetchPerformanceHistory(): Promise<any[]> {
   const raw = await fetchTableData('HISTORIAL_RENDIMIENTOS');
   if (!raw || raw.length === 0) return [];
   const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-  return raw.map(item => {
+  const sorted = [...raw].sort((a, b) => {
+    const yearA = parseInt(String(findValue(a, ['ANIO', 'year']) || 0));
+    const yearB = parseInt(String(findValue(b, ['ANIO', 'year']) || 0));
+    if (yearA !== yearB) return yearA - yearB;
+    return parseInt(String(findValue(a, ['MES', 'month']) || 0)) - parseInt(String(findValue(b, ['MES', 'month']) || 0));
+  });
+  let currentPortfolio = 1000;
+  let currentBenchmark = 1000;
+  return sorted.map(item => {
+    const pYield = parseSheetNumber(findValue(item, ['RENDIMIENTO_FONDO', 'pYield', 'rendimiento']));
+    const bYield = parseSheetNumber(findValue(item, ['RENDIMIENTO_SP500', 'bYield', 'sp500']));
+    currentPortfolio *= (1 + pYield);
+    currentBenchmark *= (1 + bYield);
     const mes = parseInt(String(findValue(item, ['MES', 'month']) || 1));
     return {
       name: monthNames[mes - 1],
       year: String(findValue(item, ['ANIO', 'year']) || ''),
-      pYield: (parseSheetNumber(findValue(item, ['RENDIMIENTO_FONDO', 'rendimiento'])) * 100).toFixed(2),
-      portfolio: 1000 // Placeholder para cálculo acumulativo
+      pYield: (pYield * 100).toFixed(2),
+      bYield: (bYield * 100).toFixed(2),
+      portfolio: parseFloat(currentPortfolio.toFixed(2)),
+      benchmark: parseFloat(currentBenchmark.toFixed(2))
     };
   });
 }
 
 export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex'): Promise<ExecutionData> => {
   try {
-    let targetUrl = GOOGLE_CONFIG.SCRIPT_API_URL;
-    let openTab = 'STOCKS_OPEN';
-    let closedTab = 'STOCKS_CLOSED';
-
-    if (category === 'forex') targetUrl = GOOGLE_CONFIG.FOREX_API_URL;
-    else if (category === 'commodities') targetUrl = GOOGLE_CONFIG.COMMODITIES_API_URL;
-
+    let openTab = 'HISTORY_OPEN';
+    let closedTab = 'HISTORY_CLOSED';
+    let targetUrl = FOREX_API_URL;
+    if (category === 'commodities') targetUrl = COMMODITIES_API_URL;
+    else if (category === 'stocks') {
+      targetUrl = STOCKS_API_URL;
+      openTab = 'STOCKS_OPEN';
+      closedTab = 'STOCKS_CLOSED';
+    }
     const fetchFunc = async (tab: string) => {
       try {
-        const res = await robustFetch(`${targetUrl}?tab=${tab}&t=${Date.now()}`);
+        const url = `${targetUrl}?tab=${tab}&t=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) return [];
         const j = await res.json();
         return Array.isArray(j) ? j : (j.rows || []);
-      } catch (e) { return []; }
+      } catch (e) {
+        return [];
+      }
     };
-
     const [rawOpen, rawClosed] = await Promise.all([fetchFunc(openTab), fetchFunc(closedTab)]);
-    return { 
-      closed: rawClosed.map((item: any) => ({ 
-        ticket: String(findValue(item, ['ticket', 'id'])),
-        symbol: String(findValue(item, ['symbol', 'asset'])),
-        side: String(findValue(item, ['accion', 'side'])),
-        profit: parseSheetNumber(findValue(item, ['beneficio', 'profit'])),
-        gain: String(findValue(item, ['ganancia', 'gain'])),
-        open_time: String(findValue(item, ['apertura', 'open_time'])),
-        close_time: String(findValue(item, ['cierre', 'close_time'])),
-        isOpen: false
-      })),
-      open: rawOpen.map((item: any) => ({
-        ticket: String(findValue(item, ['ticket', 'id'])),
-        symbol: String(findValue(item, ['symbol', 'asset'])),
-        side: String(findValue(item, ['accion', 'side'])),
-        profit: parseSheetNumber(findValue(item, ['beneficio', 'profit'])),
-        gain: String(findValue(item, ['ganancia', 'gain'])),
-        open_time: String(findValue(item, ['apertura', 'open_time'])),
-        isOpen: true
-      }))
+    const mapRecord = (item: any, isTradeOpen: boolean): Execution => {
+      const fmtNum = (v: any) => {
+        const n = parseSheetNumber(v);
+        return n.toLocaleString('es-ES', { minimumFractionDigits: 2 });
+      };
+      return {
+        ticket: String(findValue(item, ['ticket', 'id', 'orden', 'posicion', 'ticket_id']) || '0'),
+        symbol: String(findValue(item, ['symbol', 'simbolo', 'asset', 'instrument', 'par']) || '---'),
+        side: String(findValue(item, ['accion', 'side', 'type', 'tipo', 'operacion']) || '---'),
+        lots: fmtNum(findValue(item, ['lotes', 'lots', 'volume', 'size', 'lotaje'])),
+        open_time: String(findValue(item, ['fechadeapertura', 'open_date', 'opentime', 'fecha_apertura']) || ''),
+        close_time: isTradeOpen ? 'PENDIENTE' : String(findValue(item, ['fechadecierre', 'close_date', 'closetime', 'fecha_cierre']) || ''),
+        open_price: fmtNum(findValue(item, ['preciodeapertura', 'open_price', 'priceopen', 'precio_in'])),
+        close_price: isTradeOpen ? '---' : fmtNum(findValue(item, ['preciodecierre', 'close_price', 'priceclose', 'precio_out'])),
+        sl: fmtNum(findValue(item, ['slprecio', 'stoploss', 'sl', 'stop_loss'])),
+        tp: fmtNum(findValue(item, ['tpprecio', 'takeprofit', 'tp', 'take_profit'])),
+        profit: parseSheetNumber(findValue(item, ['beneficioneto', 'profit', 'resultado', 'ganancia_neta'])),
+        gain: fmtNum(findValue(item, ['ganancia', 'gain', 'pct', 'porcentaje'])),
+        swap: fmtNum(findValue(item, ['swap', 'interes'])),
+        commission: fmtNum(findValue(item, ['commission', 'comision', 'fee'])),
+        comment: String(findValue(item, ['comment', 'comentario']) || ''),
+        isOpen: isTradeOpen
+      };
     };
-  } catch (error) { return { closed: [], open: [] }; }
+    return {
+      closed: rawClosed.map(item => mapRecord(item, false)),
+      open: rawOpen.map(item => mapRecord(item, true))
+    };
+  } catch (error) {
+    return { closed: [], open: [] };
+  }
 };
