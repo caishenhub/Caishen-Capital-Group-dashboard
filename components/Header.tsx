@@ -48,8 +48,9 @@ const Header: React.FC = () => {
     <header className="h-16 md:h-20 flex-shrink-0 border-b border-surface-border bg-white/80 backdrop-blur-md sticky top-0 z-[40] flex items-center justify-between px-6 md:px-8 w-full">
       <div className="flex items-center gap-4 md:gap-6">
         <div className="flex flex-col leading-tight">
-          <span className="text-[10px] md:text-[11px] font-black text-accent tracking-tight uppercase leading-none">Caishen Capital</span>
-          <span className="block text-[8px] md:text-[8.5px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-1">Portal Accionistas</span>
+          <span className="text-[11px] md:text-[13px] font-black text-accent tracking-tighter uppercase leading-none">
+            Portal Accionistas
+          </span>
         </div>
 
         {/* INDICADOR DE NOTIFICACIÓN VERDE INSTITUCIONAL #CEFF04 */}

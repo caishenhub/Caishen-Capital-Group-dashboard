@@ -37,7 +37,7 @@ const Support: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const SUPPORT_EMAIL = 'contacto@caishencapital.co';
+  const SUPPORT_EMAIL = 'contacto@caishencapitalgroup.com';
   const BOOKING_LINK = 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0_P4feGatgrX4EH0X_qvIhMq0x9xlJrMgKjzEtmL68QLkThUUQ-ZtvuTahld3jz1bLW-hfkJEv';
   const WHATSAPP_LINK = 'https://api.whatsapp.com/message/ZDXZP24WMRQRO1?autoload=1&app_absent=0';
 
