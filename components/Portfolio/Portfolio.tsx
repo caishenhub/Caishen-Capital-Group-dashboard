@@ -211,14 +211,18 @@ const Portfolio: React.FC = () => {
           <div className="relative w-full max-w-5xl h-[92vh] md:max-h-[95vh] bg-white rounded-[24px] md:rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
             <header className="px-6 py-4 md:p-10 border-b border-surface-border flex justify-between items-center bg-white shrink-0">
               <div className="flex items-center gap-3 md:gap-6">
-                <div className="p-2 md:p-4 bg-[#1d1c2d] rounded-xl md:rounded-[24px] text-[#ceff04] shadow-xl"><ShieldCheck size={20} md:size={28} /></div>
+                <div className="p-2 md:p-4 bg-[#1d1c2d] rounded-xl md:rounded-[24px] text-[#ceff04] shadow-xl">
+                  {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
+                  <ShieldCheck className="size-5 md:size-7" />
+                </div>
                 <div>
                   <h2 className="text-lg md:text-2xl font-black text-[#1d1c2d] tracking-tighter uppercase leading-none">Análisis Estratégico</h2>
                   <p className="text-[8px] md:text-[10px] font-black text-[#9ca3af] uppercase tracking-widest mt-0.5 md:mt-1">Intelligence Verification v4.2</p>
                 </div>
               </div>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f8f9fa] rounded-full transition-all text-[#9ca3af] hover:text-[#1d1c2d]">
-                <X size={20} md:size={24} />
+                {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
+                <X className="size-5 md:size-6" />
               </button>
             </header>
             <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth hide-scrollbar bg-white">

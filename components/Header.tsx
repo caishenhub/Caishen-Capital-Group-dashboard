@@ -1,11 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { fetchCorporateNotices } from '../lib/googleSheets';
 import { CorporateNotice } from '../types';
 import { useNavigate } from 'react-router-dom';
 
-const Header: React.FC = () => {
+/* Define props for Header to fix assignment error in App.tsx */
+interface HeaderProps {
+  title?: string;
+  onOpenMenu?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
   const [notices, setNotices] = useState<CorporateNotice[]>([]);
   const [lastReadId, setLastReadId] = useState(localStorage.getItem('last_read_notice') || '');
   const navigate = useNavigate();
@@ -47,9 +53,18 @@ const Header: React.FC = () => {
   return (
     <header className="h-16 md:h-20 flex-shrink-0 border-b border-surface-border bg-white/80 backdrop-blur-md sticky top-0 z-[40] flex items-center justify-between px-6 md:px-8 w-full">
       <div className="flex items-center gap-4 md:gap-6">
+        {/* Botón de menú móvil */}
+        <button 
+          onClick={onOpenMenu}
+          className="lg:hidden p-2 -ml-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
+          title="Abrir menú"
+        >
+          <Menu size={24} />
+        </button>
+
         <div className="flex flex-col leading-tight">
           <span className="text-[11px] md:text-[13px] font-black text-accent tracking-tighter uppercase leading-none">
-            Portal Accionistas
+            {title || "Portal de Accionistas"}
           </span>
         </div>
 

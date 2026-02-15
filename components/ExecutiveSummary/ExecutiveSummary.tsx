@@ -256,7 +256,8 @@ const ExecutiveSummary: React.FC = () => {
             <div className="flex justify-between items-start mb-6">
               <span className="text-[10px] md:text-[11px] font-black text-text-muted uppercase tracking-[0.15em] leading-tight max-w-[70%]">{detail.title}</span>
               <div className="size-12 bg-primary rounded-2xl text-accent flex items-center justify-center shadow-sm">
-                {React.cloneElement(detail.icon as React.ReactElement, { size: 24 })}
+                {/* Fixed: Cast detail.icon to ReactElement<any> to fix 'size' property error */}
+                {React.cloneElement(detail.icon as React.ReactElement<any>, { size: 24 })}
               </div>
             </div>
             
@@ -372,7 +373,7 @@ const ExecutiveSummary: React.FC = () => {
              <div className="flex items-center gap-5 bg-surface-subtle/60 p-5 rounded-3xl border border-surface-border shadow-sm">
                 <div className="flex -space-x-4 overflow-hidden">
                   <div className="size-12 rounded-full border-2 border-primary bg-white flex items-center justify-center shadow-sm z-10">
-                    <img src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDI-AZUL-1.png" className="size-8 object-cover" alt="CCG" />
+                    <img src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" className="size-8 object-cover" alt="CCG" />
                   </div>
                   <div className="size-12 rounded-full border-2 border-accent bg-white flex items-center justify-center shadow-sm">
                     <img src="https://i.ibb.co/NgZbhx17/legal-Count.png" className="size-8 object-cover" alt="Legal" />
@@ -461,7 +462,8 @@ const ExecutiveSummary: React.FC = () => {
               <X size={20} />
             </button>
             <div className="size-20 bg-primary rounded-3xl text-accent flex items-center justify-center shadow-neon">
-              {React.cloneElement(activeDetail.icon as React.ReactElement, { size: 40 })}
+              {/* Fixed: Cast activeDetail.icon to ReactElement<any> to fix 'size' property error */}
+              {React.cloneElement(activeDetail.icon as React.ReactElement<any>, { size: 40 })}
             </div>
             <div className="space-y-3">
               <h3 className="text-2xl font-black text-accent uppercase tracking-tighter">{activeDetail.title}</h3>

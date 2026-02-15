@@ -74,8 +74,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
     `}>
       <div className="p-6 md:p-8 flex justify-between items-center">
+        {/* BRANDING ACTUALIZADO: CAISHEN CAPITAL GROUP */}
         <h1 className="text-accent text-sm md:text-base font-black tracking-tighter uppercase leading-tight">
-          Portal Accionistas
+          Caishen Capital Group
         </h1>
         <button onClick={onClose} className="lg:hidden p-2 text-text-muted rounded-full hover:bg-gray-100">
           <X size={24} />
@@ -91,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               key={item.path}
               to={item.path}
               onClick={onClose}
-              onMouseEnter={() => handlePrefetch(item.path)} // --- TRIGGER DE PRE-CARGA ---
+              onMouseEnter={() => handlePrefetch(item.path)}
               className={`flex items-center justify-between group px-4 py-4 md:py-3.5 rounded-xl md:rounded-2xl transition-all duration-300 ${
                 active 
                   ? 'bg-primary text-accent shadow-premium' 

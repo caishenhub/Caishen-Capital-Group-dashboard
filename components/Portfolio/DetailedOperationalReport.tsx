@@ -95,7 +95,8 @@ const DetailedOperationalReport: React.FC = () => {
               <div key={section.id} className="bg-surface-subtle border border-surface-border rounded-[32px] md:rounded-[48px] p-6 md:p-10 hover:bg-white hover:shadow-premium transition-all group">
                 <div className="flex gap-5 md:gap-8 items-start">
                   <div className="size-12 md:size-16 bg-accent rounded-2xl md:rounded-3xl flex items-center justify-center text-primary shrink-0 shadow-lg">
-                    <Target size={24} md:size={32} />
+                    {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
+                    <Target className="size-6 md:size-8" />
                   </div>
                   <div className="space-y-2 md:space-y-3">
                     <h4 className="text-sm md:text-lg font-black text-accent uppercase tracking-tight">
@@ -113,7 +114,8 @@ const DetailedOperationalReport: React.FC = () => {
             return (
               <section key={section.id} className="bg-accent rounded-[32px] md:rounded-[50px] p-8 md:p-16 text-white space-y-6 md:space-y-10 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-105 transition-transform duration-1000">
-                  <ShieldCheck size={180} md:size={250} />
+                  {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
+                  <ShieldCheck className="w-[180px] h-[180px] md:w-[250px] md:h-[250px]" />
                 </div>
                 <div className="relative z-10 space-y-4 md:space-y-6">
                   <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">{section.seccion_titulo}</h2>
@@ -128,7 +130,8 @@ const DetailedOperationalReport: React.FC = () => {
           case 'CONCLUSION':
             return (
               <section key={section.id} className="py-10 md:py-20 text-center border-y border-gray-100 space-y-6 md:space-y-10">
-                <Quote className="mx-auto text-primary opacity-20" size={40} md:size={64} />
+                {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
+                <Quote className="mx-auto text-primary opacity-20 size-10 md:size-16" />
                 <p className="text-accent font-black text-xl md:text-4xl tracking-tighter uppercase italic leading-tight px-4 md:px-20">
                   "{section.contenido}"
                 </p>
