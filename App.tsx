@@ -10,7 +10,6 @@ import Reports from './components/Reports/Reports';
 import Support from './components/Support/Support';
 import UserManagement from './components/UserManagement/UserManagement';
 import FinancialControl from './components/Admin/FinancialControl';
-import ExecutionLogs from './components/ExecutionLogs/ExecutionLogs';
 import AuthGate from './components/Auth/AuthGate'; 
 import MobileNav from './components/MobileNav';
 import { Cloud, CloudOff, AlertTriangle, ShieldAlert } from 'lucide-react';
@@ -68,7 +67,7 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
       setIsCloudConnected(isOk);
     };
     testConnection();
-    const interval = setInterval(testConnection, 30000); // Check cada 30s
+    const interval = setInterval(testConnection, 30000); 
 
     return () => {
       window.removeEventListener('finance_update', handleUpdate);
@@ -110,7 +109,6 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
 };
 
 const App: React.FC = () => {
-  // Verificación de URL de Apps Script
   const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20;
 
   if (isConfigMissing) {
@@ -124,7 +122,6 @@ const App: React.FC = () => {
           <Route path="/" element={<Layout title="Panel de Control"><Dashboard /></Layout>} />
           <Route path="/users" element={<Layout title="Gestión de Accionistas"><UserManagement /></Layout>} />
           <Route path="/portfolio" element={<Layout title="Mi Portafolio"><Portfolio /></Layout>} />
-          <Route path="/executions" element={<Layout title="Libro de Ejecuciones"><ExecutionLogs /></Layout>} />
           <Route path="/summary" element={<Layout title="Resumen Ejecutivo"><ExecutiveSummary /></Layout>} />
           <Route path="/reports" element={<Layout title="Reportes Administrativos"><Reports /></Layout>} />
           <Route path="/support" element={<Layout title="Soporte y Ayuda"><Support /></Layout>} />

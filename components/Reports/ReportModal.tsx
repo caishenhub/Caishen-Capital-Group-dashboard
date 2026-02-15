@@ -114,6 +114,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ report, onClose }) => {
                     </h4>
                   )}
                   
+                  {section.content && (
+                    <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-wrap">
+                      {section.content}
+                    </p>
+                  )}
+
                   {section.parrafos && section.parrafos.length > 0 && (
                     <div className="space-y-3">
                       {section.parrafos.map((p, pIdx) => (

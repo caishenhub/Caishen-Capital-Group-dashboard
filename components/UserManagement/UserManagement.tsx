@@ -169,7 +169,7 @@ const UserManagement: React.FC = () => {
 
         <div className="flex flex-col items-center md:items-end gap-3 self-center md:self-start">
           <button 
-            onClick={() => window.open('https://caishencapital.co/producto/acciones-minoritarias/', '_blank')}
+            onClick={() => window.open('https://caishencapitalgroup.com/producto/acciones-minoritarias/', '_blank')}
             className="group flex items-center gap-3 bg-primary hover:bg-primary-hover text-accent font-black px-10 py-4 rounded-2xl transition-all shadow-premium hover:-translate-y-1 active:scale-95 uppercase text-xs tracking-widest"
           >
             <PlusCircle size={20} className="transition-transform group-hover:rotate-90" />

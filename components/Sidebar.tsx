@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     localStorage.clear();
     sessionStorage.clear();
     if (onClose) onClose();
-    window.location.replace('https://caishencapital.co/');
+    window.location.replace('https://caishencapitalgroup.com/');
   };
 
   const menuItems = [

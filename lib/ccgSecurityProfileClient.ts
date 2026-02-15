@@ -14,7 +14,6 @@ export interface ProfileUpdateData {
   GENERO?: string;
   NUM_DOCUMENTO?: string;
   DIRECCION_RESIDENCIA?: string;
-  AVATAR_URL?: string;
 }
 
 export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ success: boolean; error?: string }> {

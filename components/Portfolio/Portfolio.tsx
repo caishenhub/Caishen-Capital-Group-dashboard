@@ -10,28 +10,17 @@ import {
   Layers, 
   FileText, 
   X,
-  Database,
-  RefreshCw,
-  Search,
-  History,
-  TrendingUp,
-  FileSpreadsheet,
   LayoutGrid,
-  ChevronLeft,
-  ChevronRight,
   ShieldCheck,
   Zap
 } from 'lucide-react';
 import AssetDonutChart from './AssetDonutChart';
 import DetailedOperationalReport from './DetailedOperationalReport';
 import { 
-  fetchExecutionsFromApi, 
-  ExecutionData, 
-  MarketCategory, 
-  fetchPortfolioStructure, 
-  fetchPortfolioKpis, 
   PortfolioCategory, 
   PortfolioKpi,
+  fetchPortfolioStructure, 
+  fetchPortfolioKpis, 
   fetchTableData,
   findValue,
   parseSheetNumber
@@ -39,37 +28,10 @@ import {
 
 const Portfolio: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
-  const [execData, setExecData] = useState<ExecutionData>({ closed: [], open: [] });
   const [portfolioData, setPortfolioData] = useState<PortfolioCategory[]>([]);
   const [kpis, setKpis] = useState<PortfolioKpi[]>([]);
   const [globalAum, setGlobalAum] = useState(0);
-
-  const [activeTab, setActiveTab] = useState<'closed' | 'open'>('closed');
-  const [activeMarket, setActiveMarket] = useState<MarketCategory>('forex');
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
-
-  const markets = [
-    { id: 'forex' as MarketCategory, name: 'Forex', icon: Globe },
-    { id: 'stocks' as MarketCategory, name: 'Acciones', icon: Landmark },
-    { id: 'commodities' as MarketCategory, name: 'Commodities', icon: Coins },
-  ];
-
-  const syncExecData = async (category: MarketCategory) => {
-    setIsLoading(true);
-    try {
-      const result = await fetchExecutionsFromApi(category);
-      setExecData(result);
-      setCurrentPage(1);
-    } catch (e) {
-      console.error(`Error sync ${category}:`, e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
 
   const loadPortfolioMetadata = async () => {
     try {
@@ -85,35 +47,16 @@ const Portfolio: React.FC = () => {
       setGlobalAum(aum);
     } catch (e) {
       console.error("Error loading portfolio metadata:", e);
+    } finally {
+      setIsLoadingMetadata(false);
     }
   };
 
   useEffect(() => {
-    syncExecData(activeMarket);
     loadPortfolioMetadata();
-    
     const interval = setInterval(loadPortfolioMetadata, 120000);
     return () => clearInterval(interval);
-  }, [activeMarket]);
-
-  const filteredExecData = useMemo(() => {
-    const list = activeTab === 'closed' ? execData.closed : execData.open;
-    return list.filter(item => {
-      return item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
-             item.ticket.toLowerCase().includes(searchTerm.toLowerCase());
-    });
-  }, [execData, activeTab, searchTerm]);
-
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredExecData.slice(startIndex, startIndex + pageSize);
-  }, [filteredExecData, currentPage]);
-
-  const totalPages = Math.ceil(filteredExecData.length / pageSize) || 1;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchTerm]);
+  }, []);
 
   const getKpiIcon = (type: string) => {
     switch(type) {
@@ -123,6 +66,15 @@ const Portfolio: React.FC = () => {
       default: return Activity;
     }
   };
+
+  if (isLoadingMetadata && kpis.length === 0) {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center py-40 gap-4">
+        <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Cargando Portafolio Institucional...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-10 space-y-8 md:space-y-12 animate-in fade-in duration-700 max-w-[1800px] mx-auto">
@@ -250,161 +202,6 @@ const Portfolio: React.FC = () => {
                    </p>
                 </div>
              </div>
-        </div>
-
-        <div className="space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-4 self-start">
-              <div className="p-2.5 bg-[#1d1c2d] rounded-2xl text-[#ceff04] shadow-lg shrink-0"><Database size={20} /></div>
-              <div>
-                <h2 className="text-[#1d1c2d] text-xl md:text-2xl font-black tracking-tighter uppercase leading-none">Libro de Operaciones</h2>
-                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-1">Verificación Institucional en Tiempo Real</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2 bg-white p-1.5 rounded-3xl border border-surface-border shadow-sm overflow-x-auto w-full md:w-auto hide-scrollbar">
-              {markets.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setActiveMarket(m.id)}
-                  className={`flex-1 md:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all whitespace-nowrap ${
-                    activeMarket === m.id 
-                      ? 'bg-[#ceff04] text-[#1d1c2d] shadow-md font-black scale-105' 
-                      : 'text-text-muted hover:bg-gray-50 font-bold'
-                  }`}
-                >
-                  <m.icon size={14} />
-                  <span className="text-[10px] uppercase tracking-widest">{m.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white border border-surface-border rounded-[40px] overflow-hidden shadow-premium relative flex flex-col">
-            <div className="p-6 md:p-10 border-b border-surface-border flex flex-col lg:flex-row gap-8 lg:gap-10 justify-between items-center bg-surface-subtle/20">
-              <div className="flex bg-white p-1 rounded-2xl border border-surface-border w-full lg:w-auto shadow-sm">
-                <button 
-                  onClick={() => setActiveTab('closed')}
-                  className={`flex-1 lg:flex-none flex items-center justify-center gap-3 px-6 md:px-10 py-3.5 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === 'closed' ? 'bg-[#1d1c2d] text-white shadow-lg' : 'text-[#6b7280] hover:text-[#1d1c2d]'}`}
-                >
-                  <History size={14} /> Histórico
-                </button>
-                <button 
-                  onClick={() => setActiveTab('open')}
-                  className={`flex-1 lg:flex-none flex items-center justify-center gap-3 px-6 md:px-10 py-3.5 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === 'open' ? 'bg-[#ceff04] text-[#1d1c2d] shadow-md' : 'text-[#6b7280] hover:text-[#1d1c2d]'}`}
-                >
-                  <TrendingUp size={14} /> En Curso
-                </button>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto flex-1 max-w-2xl">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={16} />
-                  <input 
-                    type="text"
-                    placeholder="Filtrar Activo..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3.5 bg-white border border-surface-border rounded-2xl text-[11px] font-black text-[#1d1c2d] focus:ring-[#ceff04] focus:border-[#ceff04] transition-all"
-                  />
-                </div>
-                
-                <button 
-                  onClick={() => syncExecData(activeMarket)}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-3 px-6 py-3 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
-                >
-                  <div className="relative flex size-2">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 ${isLoading ? 'duration-300' : 'duration-1000'}`}></span>
-                    <span className="relative inline-flex rounded-full size-2 bg-primary"></span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                    {isLoading ? 'Sync...' : 'Nube'}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="min-h-[400px] relative overflow-x-auto">
-              {isLoading && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-4">
-                  <div className="p-5 bg-[#1d1c2d] rounded-2xl shadow-xl animate-bounce">
-                    <RefreshCw size={32} className="text-[#ceff04] animate-spin" />
-                  </div>
-                  <p className="text-[11px] font-black text-[#1d1c2d] uppercase tracking-widest">Validando Gestión...</p>
-                </div>
-              )}
-
-              <table className="w-full text-left border-collapse min-w-[1000px]">
-                <thead>
-                  <tr className="bg-[#f8f9fa] text-[9px] font-black text-[#9ca3af] uppercase tracking-[0.2em] border-b border-surface-border">
-                    <th className="px-8 py-6">Ticket</th>
-                    <th className="px-4 py-6">Instrumento</th>
-                    <th className="px-4 py-6">Acción</th>
-                    <th className="px-4 py-6">Apertura</th>
-                    {activeTab === 'closed' && <th className="px-4 py-6">Cierre</th>}
-                    <th className="px-4 py-6 text-right">Neto USD</th>
-                    <th className="px-8 py-6 text-right">Rendimiento %</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {paginatedData.map((ex, idx) => (
-                    <tr key={ex.ticket || idx} className="hover:bg-[#fcfcfc] transition-colors group">
-                      <td className="px-8 py-6 text-[10px] font-black text-[#9ca3af]">#{ex.ticket}</td>
-                      <td className="px-4 py-6 text-[13px] font-black text-[#1d1c2d]">{ex.symbol}</td>
-                      <td className="px-4 py-6">
-                        <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border ${ex.side.toLowerCase().includes('buy') ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
-                          {ex.side}
-                        </span>
-                      </td>
-                      <td className="px-4 py-6 text-[11px] font-bold text-[#6b7280]">{ex.open_time}</td>
-                      {activeTab === 'closed' && <td className="px-4 py-6 text-[11px] font-bold text-[#6b7280]">{ex.close_time}</td>}
-                      <td className={`px-4 py-6 text-[13px] font-black text-right ${ex.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {ex.profit.toLocaleString('es-ES', { minimumFractionDigits: 2 })} USD
-                      </td>
-                      <td className={`px-8 py-6 text-[13px] font-black text-right ${ex.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {ex.gain}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {filteredExecData.length === 0 && !isLoading && (
-                <div className="py-24 text-center text-text-muted flex flex-col items-center justify-center space-y-4">
-                  <FileSpreadsheet size={48} className="opacity-10" />
-                  <p className="font-black uppercase tracking-widest text-[10px]">Sin registros patrimoniales</p>
-                </div>
-              )}
-            </div>
-
-            {filteredExecData.length > 0 && (
-              <div className="p-6 md:p-8 border-t border-surface-border bg-white flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="text-[10px] font-black text-[#9ca3af] uppercase tracking-widest">
-                  Operaciones: <span className="text-[#1d1c2d]">{filteredExecData.length}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2.5 rounded-xl border border-surface-border text-[#1d1c2d] hover:bg-surface-subtle disabled:opacity-30 transition-all"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black text-accent uppercase tracking-widest px-4 py-2 bg-surface-subtle rounded-lg">Página {currentPage} / {totalPages}</span>
-                  </div>
-                  <button 
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-2.5 rounded-xl border border-surface-border text-[#1d1c2d] hover:bg-surface-subtle disabled:opacity-30 transition-all"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 

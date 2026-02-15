@@ -114,10 +114,6 @@ export async function checkConnection(): Promise<boolean> {
   }
 }
 
-/**
- * FUNCIÓN CENTRAL DE LECTURA (GET)
- * Optimizada para evitar bloqueos de CORS y seguir redirecciones de Google.
- */
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!PROFILE_API_URL) return [];
 
@@ -170,9 +166,6 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   return fetchPromise;
 }
 
-/**
- * FUNCIÓN CENTRAL DE ESCRITURA (POST)
- */
 async function sendToScript(payload: any) {
   try {
     const response = await fetch(PROFILE_API_URL, {
@@ -341,24 +334,87 @@ export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> 
   try {
     const data = await fetchTableData('REPORTES_ADMIN', ignoreCache);
     if (!data || data.length === 0) return MOCK_REPORTS;
-    const reports: Report[] = data
+    
+    const mapped: (Report & { _timestamp: number })[] = data
       .filter(row => norm(findValue(row, ['STATUS', 'status'])) === 'publicado')
       .map(row => {
+        const rawDateVal = findValue(row, ['FECHA_PUBLICACION', 'date', 'fecha']);
+        const parsedDate = rawDateVal ? new Date(rawDateVal) : new Date(0);
+        
+        // --- PROCESAMIENTO DE SECCIONES (Prioridad JSON) ---
+        let sections: ReportSection[] = [];
+        const jsonSectionsRaw = findValue(row, ['SECCIONES_JSON', 'json_sections', 'secciones_json']);
+        
+        if (jsonSectionsRaw) {
+          try {
+            const parsed = JSON.parse(jsonSectionsRaw);
+            const arrayParsed = Array.isArray(parsed) ? parsed : [];
+            // Normalizar campos del JSON para compatibilidad con el modal
+            sections = arrayParsed.map(s => ({
+               titulo: s.titulo || s.title || s.seccion_titulo || '',
+               parrafos: s.parrafos || (s.parrafo ? [s.parrafo] : []),
+               items: s.items || s.puntos || [],
+               content: s.content || s.contenido || s.texto || ''
+            }));
+          } catch (e) {
+            console.warn("Fallo al parsear SECCIONES_JSON, usando fallback de texto plano.");
+          }
+        }
+
+        // Si no hay secciones por JSON, procesamos el CONTENIDO como fallback
+        if (sections.length === 0) {
+          const fullContent = String(findValue(row, ['CONTENIDO', 'content', 'contenido', 'cuerpo', 'texto']) || '');
+          if (fullContent) {
+            const lines = fullContent.split('\n');
+            let currentSection: ReportSection = { titulo: 'Contenido del Informe', parrafos: [], items: [], content: '' };
+            
+            lines.forEach(line => {
+              const trimmed = line.trim();
+              if (!trimmed) return;
+
+              if (trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+                currentSection.items?.push(trimmed.substring(1).trim());
+              } else if ((trimmed.length < 60 && trimmed === trimmed.toUpperCase() && trimmed.length > 3) || trimmed.endsWith(':')) {
+                if (currentSection.parrafos!.length > 0 || currentSection.items!.length > 0 || currentSection.content) {
+                  sections.push(currentSection);
+                }
+                currentSection = { titulo: trimmed.replace(/:$/, ''), parrafos: [], items: [], content: '' };
+              } else {
+                currentSection.parrafos?.push(trimmed);
+              }
+            });
+            
+            if (currentSection.parrafos!.length > 0 || currentSection.items!.length > 0 || currentSection.content) {
+              sections.push(currentSection);
+            }
+          }
+        }
+
         return {
-          id: String(findValue(row, ['ID_REPORTE', 'id']) || Math.random().toString()),
-          title: String(findValue(row, ['TITULO', 'title']) || 'Reporte Institucional'),
-          date: formatSheetDate(findValue(row, ['FECHA_PUBLICACION', 'date'])),
-          category: String(findValue(row, ['CATEGORIA', 'category']) || 'General') as any,
-          summary: String(findValue(row, ['DESCRIPCION_CORTA', 'summary']) || ''),
-          highlight: String(findValue(row, ['TEXTO_DESTACADO', 'highlight']) || ''),
-          notaImportante: String(findValue(row, ['NOTA_IMPORTANTE', 'note']) || ''),
+          id: String(findValue(row, ['ID_REPORTE', 'id', 'id_reporte']) || Math.random().toString()),
+          title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Reporte Institucional'),
+          date: formatSheetDate(rawDateVal),
+          category: String(findValue(row, ['CATEGORIA', 'category', 'categoria']) || 'General') as any,
+          summary: String(findValue(row, ['DESCRIPCION_CORTA', 'summary', 'descripcion']) || ''),
+          highlight: String(findValue(row, ['TEXTO_DESTACADO', 'highlight', 'destacado']) || ''),
+          sections: sections.length > 0 ? sections : undefined,
+          notaImportante: String(findValue(row, ['NOTA_IMPORTANTE', 'note', 'nota']) || ''),
           visibleEnTodos: norm(findValue(row, ['VISIBLE_EN_TODOS', 'visible'])) === 'si',
-          ordenForzado: parseSheetNumber(findValue(row, ['ORDEN_FORZADO', 'order'])),
-          color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || '')
+          ordenForzado: parseSheetNumber(findValue(row, ['ORDEN_FORZADO', 'order', 'orden'])),
+          color: String(findValue(row, ['COLOR', 'color', 'hex_color']) || ''),
+          _timestamp: parsedDate.getTime()
         };
       });
-    return reports.sort((a, b) => (b.ordenForzado || 0) - (a.ordenForzado || 0));
+
+    return mapped.sort((a, b) => {
+      // Priorización: Orden Forzado > Fecha Reciente
+      if (b.ordenForzado !== a.ordenForzado) {
+        return (b.ordenForzado || 0) - (a.ordenForzado || 0);
+      }
+      return b._timestamp - a._timestamp;
+    });
   } catch (error) {
+    console.error("Error crítico en fetchReportsAdmin:", error);
     return MOCK_REPORTS;
   }
 }
@@ -411,27 +467,46 @@ export async function fetchPerformanceHistory(): Promise<any[]> {
 
 export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex'): Promise<ExecutionData> => {
   try {
+    // Intentamos cargar la pestaña estándar (ej: FOREX_OPEN)
     const data = await fetchTableData(`${category.toUpperCase()}_OPEN`);
-    const mapRecord = (item: any, isTradeOpen: boolean): Execution => ({
-      ticket: String(findValue(item, ['ticket', 'id', 'orden']) || '0'),
-      symbol: String(findValue(item, ['symbol', 'simbolo']) || '---'),
-      side: String(findValue(item, ['accion', 'side']) || '---'),
-      lots: String(findValue(item, ['lotes', 'lots']) || '0.00'),
-      open_time: String(findValue(item, ['fechadeapertura']) || ''),
-      close_time: isTradeOpen ? 'PENDIENTE' : String(findValue(item, ['fechadecierre']) || ''),
-      open_price: String(findValue(item, ['preciodeapertura']) || '0.00'),
-      close_price: isTradeOpen ? '---' : String(findValue(item, ['preciodecierre']) || '0.00'),
-      sl: '---', tp: '---',
-      profit: parseSheetNumber(findValue(item, ['beneficioneto'])),
-      gain: String(findValue(item, ['ganancia']) || '0.00'),
-      swap: '0', commission: '0', comment: '', isOpen: isTradeOpen
-    });
+    
+    // Mapeador avanzado con soporte para múltiples plataformas de trading
+    const mapRecord = (item: any, isTradeOpen: boolean): Execution => {
+      // Alias comunes de columnas en exportaciones de trading
+      const ticket = String(findValue(item, ['ticket', 'id', 'orden', 'order', 'position', 'position_id', 'id_operacion']) || '0');
+      const symbol = String(findValue(item, ['symbol', 'simbolo', 'asset', 'instrumento', 'par']) || '---');
+      const side = String(findValue(item, ['accion', 'side', 'type', 'tipo_orden', 'operation']) || '---');
+      const lots = String(findValue(item, ['lotes', 'lots', 'volume', 'volumen', 'size', 'cantidad']) || '0.00');
+      const open_time = String(findValue(item, ['fechadeapertura', 'open_time', 'time_open', 'apertura', 'fecha_inicio']) || '');
+      const close_time = isTradeOpen ? 'PENDIENTE' : String(findValue(item, ['fechadecierre', 'close_time', 'time_close', 'cierre', 'fecha_fin']) || '');
+      const open_price = String(findValue(item, ['preciodeapertura', 'open_price', 'price_open', 'precio_in']) || '0.00');
+      const close_price = isTradeOpen ? '---' : String(findValue(item, ['preciodecierre', 'close_price', 'price_close', 'precio_out']) || '0.00');
+      const sl = String(findValue(item, ['sl', 's/l', 'stop_loss', 'stoploss']) || '---');
+      const tp = String(findValue(item, ['tp', 't/p', 'take_profit', 'takeprofit']) || '---');
+      const profit = parseSheetNumber(findValue(item, ['beneficioneto', 'profit', 'gain_usd', 'utilidad', 'net_profit', 'resultado_usd']));
+      const gain = String(findValue(item, ['ganancia', 'gain_pct', 'profit_pct', 'rendimiento', 'retorno']) || '0.00');
+      const swap = String(findValue(item, ['swap', 'overnight_fee', 'interes']) || '0');
+      const commission = String(findValue(item, ['commission', 'comision', 'fee']) || '0');
+      const comment = String(findValue(item, ['comment', 'comentario', 'label']) || '');
+
+      return {
+        ticket, symbol, side, lots, open_time, close_time, open_price, close_price, sl, tp, profit, gain, swap, commission, comment, isOpen: isTradeOpen
+      };
+    };
+
+    // Determinamos si una operación está cerrada basándonos en múltiples criterios
+    const isClosed = (r: any) => {
+      const status = norm(findValue(r, ['STATUS', 'status', 'estado', 'type_status']));
+      const closeTime = findValue(r, ['fechadecierre', 'close_time', 'time_close', 'cierre']);
+      return status === 'closed' || status === 'cerrada' || status === 'completed' || (closeTime && closeTime !== '' && closeTime !== 'PENDIENTE');
+    };
 
     return {
-      closed: data.filter(r => findValue(r, ['STATUS', 'status']) === 'CLOSED').map(r => mapRecord(r, false)),
-      open: data.filter(r => findValue(r, ['STATUS', 'status']) !== 'CLOSED').map(r => mapRecord(r, true))
+      closed: data.filter(r => isClosed(r)).map(r => mapRecord(r, false)),
+      open: data.filter(r => !isClosed(r)).map(r => mapRecord(r, true))
     };
   } catch (error) {
+    console.error(`Error en fetchExecutionsFromApi (${category}):`, error);
     return { closed: [], open: [] };
   }
 };

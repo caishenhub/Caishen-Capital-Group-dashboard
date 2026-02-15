@@ -103,7 +103,6 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     birthDate: user.raw?.FECHA_NACIMIENTO || '',
     gender: user.raw?.GENERO || 'No Definido',
     address: user.raw?.DIRECCION_RESIDENCIA || '',
-    avatarUrl: user.raw?.AVATAR_URL || '',
     country: 'Colombia',
     bankName: '',
     accountType: 'Ahorros',
@@ -156,7 +155,6 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
           birthDate: String(findValue(freshUser, ['FECHA_NACIMIENTO']) || prev.birthDate),
           gender: String(findValue(freshUser, ['GENERO']) || prev.gender),
           address: String(findValue(freshUser, ['DIRECCION_RESIDENCIA']) || prev.address),
-          avatarUrl: String(findValue(freshUser, ['AVATAR_URL']) || prev.avatarUrl),
           bankName: accountData?.institution || prev.bankName,
           accountNumber: accountData?.account || prev.accountNumber,
           walletAddress: accountData?.account || prev.walletAddress,
@@ -257,14 +255,12 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     setIsUpdatingProfile(true);
     setProfileSuccess(false);
     try {
-      // Cabeceras exactas de la hoja LIBRO_ACCIONISTAS
       const updatePayload: ProfileUpdateData = {
         TELEFONO: formData.phone,
         NUM_DOCUMENTO: formData.docNumber,
         FECHA_NACIMIENTO: formData.birthDate,
         GENERO: formData.gender,
-        DIRECCION_RESIDENCIA: formData.address,
-        AVATAR_URL: formData.avatarUrl
+        DIRECCION_RESIDENCIA: formData.address
       };
       
       const res = await ccgUpdateProfile(user.uid, updatePayload);
@@ -394,14 +390,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 onClick={() => setActiveView('account')}
                 className="size-20 lg:size-24 rounded-[32px] bg-accent flex items-center justify-center font-black text-2xl text-primary shadow-2xl uppercase shrink-0 relative group cursor-pointer overflow-hidden"
               >
-                {formData.avatarUrl ? (
-                  <img src={formData.avatarUrl} alt="Avatar" className="size-full object-cover" />
-                ) : (
-                  <span>{user.initials || 'S'}</span>
-                )}
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                   <Camera size={24} className="text-primary" />
-                </div>
+                <span>{user.initials || 'S'}</span>
               </div>
               <div className="space-y-3">
                 <h1 
@@ -518,29 +507,8 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                 {/* Avatar Izquierda */}
-                 <div className="lg:col-span-2 flex flex-col items-center">
-                    <div className="relative group">
-                      <div className="size-32 rounded-full border-4 border-white shadow-xl overflow-hidden bg-accent flex items-center justify-center text-primary text-4xl font-black">
-                        {formData.avatarUrl ? (
-                          <img src={formData.avatarUrl} alt="PFP" className="size-full object-cover" />
-                        ) : user.initials}
-                      </div>
-                      <button className="absolute bottom-1 right-1 size-9 bg-white border border-surface-border rounded-full shadow-lg flex items-center justify-center text-text-muted hover:text-accent transition-all group-hover:scale-110">
-                        <Camera size={18} />
-                      </button>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={formData.avatarUrl} 
-                      onChange={(e) => setFormData({...formData, avatarUrl: e.target.value})}
-                      placeholder="URL de Imagen"
-                      className="mt-4 w-full text-[9px] font-bold text-center text-text-muted bg-surface-subtle p-2 rounded-lg border-none focus:ring-1 focus:ring-primary"
-                    />
-                 </div>
-
-                 {/* Formulario Derecha */}
-                 <div className="lg:col-span-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {/* Formulario Completo */}
+                 <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1.5">
                        <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Nombre Completo</label>
                        <div className="relative">
@@ -861,7 +829,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         )}
       </main>
 
-      {/* MODALES IGUALES */}
+      {/* MODALES */}
       {showPinChange && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => !isUpdatingPin && setShowPinChange(false)} />
@@ -913,7 +881,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
 
       {showConfirm && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowConfirm(false)} />
+          <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowConfirm(false)} />
           <div className="relative w-full max-w-sm bg-white rounded-[40px] p-10 flex flex-col items-center text-center animate-in zoom-in-95">
             <div className="size-20 bg-primary/10 rounded-3xl flex items-center justify-center text-accent shadow-sm border border-primary/20 mb-6"><ShieldCheck size={40} /></div>
             <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-2">Confirmar Registro Maestro</h3>
