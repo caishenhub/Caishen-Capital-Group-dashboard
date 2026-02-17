@@ -2,32 +2,29 @@
 import { jsPDF } from 'jspdf';
 import { Report } from '../types';
 
-// Logo oficial de Caishen Capital Group
-const LOGO_URL = 'https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png';
+// Nuevo Logo oficial de Caishen Capital Group
+const LOGO_URL = 'https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png';
 
 const addInstitutionalHeader = (doc: jsPDF, title: string) => {
   const marginX = 20;
   
-  // Nombre de la compañía (Izquierda)
-  doc.setTextColor(29, 28, 45); // #1d1c2d
+  doc.setTextColor(29, 28, 45); 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.text('CAISHEN CAPITAL GROUP S.A.S.', marginX, 25);
   
-  // Título del documento (Izquierda, abajo del nombre)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(140, 140, 140);
   doc.text(title.toUpperCase(), marginX, 31);
 
-  // Logo (Derecha) - Formato alargado institucional
   try {
-    doc.addImage(LOGO_URL, 'PNG', 140, 14, 50, 14);
+    // Se usa el nuevo logo en formato contenedor para evitar distorsiones
+    doc.addImage(LOGO_URL, 'PNG', 150, 12, 18, 18);
   } catch (e) {
     console.warn("No se pudo cargar el logo en el PDF", e);
   }
 
-  // Línea de acento neón sutil
   doc.setDrawColor(206, 255, 4);
   doc.setLineWidth(0.6);
   doc.line(marginX, 38, 190, 38);
@@ -142,7 +139,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
   
   let cursorY = 60;
   
-  // Bloque de Identidad (Socio)
   doc.setDrawColor(240, 240, 240);
   doc.setFillColor(252, 252, 252);
   doc.roundedRect(marginX, cursorY, 170, 45, 4, 4, 'FD');
@@ -161,7 +157,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
   
   cursorY += 65;
   
-  // Sección de Capitalización - Diseño Profesional en Recuadro
   doc.setTextColor(29, 28, 45);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
@@ -176,7 +171,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
     [`Utilidad Neta Generada ${year}`, `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`]
   ];
 
-  // Dibujar contenedor para los datos financieros
   const boxHeight = (financialRows.length * 10) + 5;
   doc.setDrawColor(240, 240, 240);
   doc.setFillColor(254, 254, 254);
@@ -193,7 +187,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
     doc.setTextColor(29, 28, 45);
     doc.text(row[1], 182, cursorY, { align: 'right' });
 
-    // Línea separadora interna (solo si no es la última fila)
     if (index < financialRows.length - 1) {
       doc.setDrawColor(245, 245, 245);
       doc.line(marginX + 8, cursorY + 3, 182, cursorY + 3);
@@ -203,7 +196,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
   
   cursorY += 15;
   
-  // Sección de Liquidaciones (Tabla)
   if (cursorY > 200) {
     doc.addPage();
     addInstitutionalHeader(doc, `Detalle de Liquidaciones - Periodo ${year}`);
@@ -216,7 +208,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
   doc.text('DETALLE DE LIQUIDACIONES MENSUALES', marginX, cursorY);
   cursorY += 10;
   
-  // Encabezado de la Tabla
   doc.setFillColor(248, 249, 250);
   doc.rect(marginX, cursorY, 170, 10, 'F');
   doc.setFontSize(8);
@@ -230,7 +221,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
   const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   
   stats.yearData.sort((a: any, b: any) => parseInt(a.MES) - parseInt(b.MES)).forEach((d: any) => {
-    // Verificar si necesitamos nueva página para las filas de la tabla
     if (cursorY > 265) {
       doc.addPage();
       addInstitutionalHeader(doc, `Continuación Liquidaciones - ${year}`);
@@ -268,7 +258,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
     cursorY += 10;
   });
   
-  // Bloque Final de Certificación
   let certificationY = Math.min(cursorY + 20, 250);
   
   if (cursorY > 240) {
@@ -285,11 +274,6 @@ export const generateShareholderStatementPDF = async (user: any, stats: any, yea
   doc.setTextColor(29, 28, 45);
   doc.setFont('helvetica', 'bold');
   doc.text('COMITÉ TÉCNICO OPERATIVO', 105, certificationY + 7, { align: 'center' });
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  doc.text('Validación Electrónica Blockchain habilitada para auditoría', 105, certificationY + 12, { align: 'center' });
 
   addFooter(doc);
   doc.save(`Extracto_CCG_${user.uid}_${year}.pdf`);

@@ -5,7 +5,6 @@ import { fetchCorporateNotices } from '../lib/googleSheets';
 import { CorporateNotice } from '../types';
 import { useNavigate } from 'react-router-dom';
 
-/* Define props for Header to fix assignment error in App.tsx */
 interface HeaderProps {
   title?: string;
   onOpenMenu?: () => void;
@@ -53,7 +52,6 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
   return (
     <header className="h-16 md:h-20 flex-shrink-0 border-b border-surface-border bg-white/80 backdrop-blur-md sticky top-0 z-[40] flex items-center justify-between px-6 md:px-8 w-full">
       <div className="flex items-center gap-4 md:gap-6">
-        {/* Botón de menú móvil */}
         <button 
           onClick={onOpenMenu}
           className="lg:hidden p-2 -ml-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
@@ -68,7 +66,6 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
           </span>
         </div>
 
-        {/* INDICADOR DE NOTIFICACIÓN VERDE INSTITUCIONAL #CEFF04 */}
         <button 
           onClick={handleNavigateToNotices}
           title="Ver avisos corporativos"
@@ -91,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
       <div className="flex items-center">
         <div className="h-8 md:h-12 flex items-center cursor-pointer" onClick={() => navigate('/')}>
           <img 
-            src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" 
+            src="https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png" 
             alt="Caishen Capital" 
             className="h-full w-auto object-contain"
           />

@@ -122,7 +122,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       className="fixed inset-0 z-[9999] flex items-center justify-center p-6 overflow-hidden bg-accent bg-cover bg-center transition-opacity duration-1000"
       style={{ 
         backgroundImage: "url('https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png')",
-        // RESPALDO DE COLOR: Un degradado oscuro institucional que disimula la carga de la imagen
         background: "linear-gradient(rgba(29, 28, 45, 0.4), rgba(29, 28, 45, 0.4)), #1d1c2d url('https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png')",
         backgroundSize: "cover",
         backgroundPosition: "center"
@@ -132,7 +131,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       
       <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-2xl border border-white/20 p-8 md:p-10 space-y-8 animate-in fade-in zoom-in-95 duration-700">
         <div className="flex flex-col items-center text-center space-y-6">
-          <img src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" alt="Caishen Capital" className="h-16 w-auto object-contain" />
+          <img src="https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png" alt="Caishen Capital" className="h-16 w-auto object-contain" />
           <div className="space-y-2">
             <h1 className="text-2xl font-black text-accent tracking-tighter uppercase">Portal Accionistas</h1>
             <div className="flex items-center justify-center gap-1.5 pt-1">

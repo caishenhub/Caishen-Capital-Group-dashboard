@@ -1,17 +1,17 @@
 
-const CACHE_NAME = 'caishen-pwa-v4';
+const CACHE_NAME = 'caishen-pwa-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   'https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png',
-  'https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png'
+  'https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('PWA: Almacenando activos críticos en disco local');
+      console.log('PWA: Almacenando nuevos activos de marca en disco local');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -30,7 +30,6 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Solo interceptar peticiones GET
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
@@ -38,7 +37,6 @@ self.addEventListener('fetch', event => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then(response => {
-        // Cachear dinámicamente imágenes externas (logos, fondos)
         if (event.request.url.includes('i.ibb.co')) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => {
@@ -47,7 +45,7 @@ self.addEventListener('fetch', event => {
         }
         return response;
       }).catch(() => {
-        // Fallback offline si es necesario
+        // Fallback offline
       });
     })
   );
