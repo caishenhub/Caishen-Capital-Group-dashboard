@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, ShieldCheck, AlertCircle, X, ChevronRight, UserPlus, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
 import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -19,7 +19,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const session = localStorage.getItem('ccg_session');
     if (session) {
       setIsAuthenticated(true);
-      warmUpCache(); // Carga de fondo para usuarios ya logueados
+      warmUpCache();
     }
     setIsLoading(false);
 
@@ -54,8 +54,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       if (user) {
         setFoundUser(user);
         setShowPinModal(true);
-        // --- OPTIMIZACIÓN: CARGA ESPECULATIVA INMEDIATA ---
-        // Iniciamos la carga del Dashboard mientras el usuario piensa el PIN
         warmUpCache(); 
         setError('');
       } else {
@@ -121,11 +119,18 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-6 overflow-hidden bg-cover bg-center"
-      style={{ backgroundImage: "url('https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png')" }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-6 overflow-hidden bg-accent bg-cover bg-center transition-opacity duration-1000"
+      style={{ 
+        backgroundImage: "url('https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png')",
+        // RESPALDO DE COLOR: Un degradado oscuro institucional que disimula la carga de la imagen
+        background: "linear-gradient(rgba(29, 28, 45, 0.4), rgba(29, 28, 45, 0.4)), #1d1c2d url('https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }}
     >
-      <div className="absolute inset-0 bg-accent/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-premium border border-white/20 p-8 md:p-10 space-y-8 animate-in fade-in zoom-in-95 duration-700">
+      <div className="absolute inset-0 backdrop-blur-[2px]" />
+      
+      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-2xl border border-white/20 p-8 md:p-10 space-y-8 animate-in fade-in zoom-in-95 duration-700">
         <div className="flex flex-col items-center text-center space-y-6">
           <img src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" alt="Caishen Capital" className="h-16 w-auto object-contain" />
           <div className="space-y-2">
@@ -148,7 +153,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="ej: #USR-008"
-              className="w-full bg-surface-subtle border-2 border-surface-border rounded-2xl px-5 py-4 text-sm font-bold text-accent focus:border-primary focus:ring-0 transition-all"
+              className="w-full bg-surface-subtle border-2 border-surface-border rounded-2xl px-5 py-4 text-sm font-bold text-accent focus:border-primary focus:ring-0 transition-all outline-none"
             />
           </div>
           {error && !showPinModal && (
@@ -160,7 +165,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <button 
             type="submit"
             disabled={isSyncing}
-            className="w-full bg-accent text-primary font-black py-5 rounded-2xl flex items-center justify-center gap-2 hover:bg-accent/90 transition-all shadow-xl active:scale-95 uppercase text-xs tracking-[0.2em] disabled:opacity-50"
+            className="w-full bg-accent text-primary font-black py-5 rounded-2xl flex items-center justify-center gap-2 hover:bg-black transition-all shadow-xl active:scale-95 uppercase text-xs tracking-[0.2em] disabled:opacity-50"
           >
             {isSyncing ? 'Validando...' : 'Siguiente'}
             <ChevronRight size={18} />
@@ -182,7 +187,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-accent/80 backdrop-blur-md animate-in fade-in" onClick={() => !isSyncing && setShowPinModal(false)} />
           <div className={`relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-10 flex flex-col items-center animate-in zoom-in-95 ${error === 'PIN Incorrecto' ? 'animate-shake' : ''}`}>
-            <button onClick={() => setShowPinModal(false)} className="absolute top-6 right-6 text-text-muted"><X size={20} /></button>
+            <button onClick={() => setShowPinModal(false)} className="absolute top-6 right-6 text-text-muted hover:bg-gray-100 p-2 rounded-full"><X size={20} /></button>
             <div className="size-20 bg-accent rounded-[24px] flex items-center justify-center text-primary shadow-2xl mb-6"><Lock size={32} /></div>
             <h3 className="text-xl font-black text-accent uppercase tracking-tighter mb-1">Ingrese su PIN</h3>
             <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-8 text-center">Código único para {identifier}</p>
