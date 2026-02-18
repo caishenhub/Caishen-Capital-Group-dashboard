@@ -2,8 +2,8 @@
 import { jsPDF } from 'jspdf';
 import { Report } from '../types';
 
-// Nuevo Logo oficial de Caishen Capital Group
-const LOGO_URL = 'https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png';
+// Nuevo Logo oficial de Caishen Capital Group (Sin fondo)
+const LOGO_URL = 'https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png';
 
 const addInstitutionalHeader = (doc: jsPDF, title: string) => {
   const marginX = 20;
@@ -19,8 +19,8 @@ const addInstitutionalHeader = (doc: jsPDF, title: string) => {
   doc.text(title.toUpperCase(), marginX, 31);
 
   try {
-    // Se usa el nuevo logo en formato contenedor para evitar distorsiones
-    doc.addImage(LOGO_URL, 'PNG', 150, 12, 18, 18);
+    // Se usa el nuevo logo en la parte superior derecha
+    doc.addImage(LOGO_URL, 'PNG', 155, 12, 25, 18);
   } catch (e) {
     console.warn("No se pudo cargar el logo en el PDF", e);
   }

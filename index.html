@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
     <title>Caishen Capital - Dashboard</title>
     
     <!-- PWA Meta Tags -->
@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Caishen Capital" />
     
     <!-- Iconos para Apple -->
-    <link rel="apple-touch-icon" href="https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png">
     <link rel="apple-touch-startup-image" href="https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png">
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
@@ -51,28 +51,29 @@
                     borderRadius: {
                         'xl': '0.75rem',
                         '2xl': '1rem',
-                        '3xl': '1.5rem'
-                    },
-                    boxShadow: {
-                        'premium': '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
-                        'neon': '0 0 20px rgba(206, 255, 4, 0.2)'
+                        '3xl': '1.5rem',
+                        '4xl': '2rem'
                     }
                 }
             }
         }
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        .pb-safe { padding-bottom: var(--sab); }
+        .pt-safe { padding-top: var(--sat); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #D1D5DB; }
-        
-        /* Asegura que en iOS el notch no corte el diseño */
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        .pt-safe { padding-top: env(safe-area-inset-top); }
     </style>
 <script type="importmap">
 {
@@ -84,9 +85,9 @@
     "react-router-dom": "https://esm.sh/react-router-dom@7.1.5?external=react,react-dom",
     "recharts": "https://esm.sh/recharts@2.15.0?external=react,react-dom",
     "jspdf": "https://esm.sh/jspdf@2.5.1",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
   }
 }

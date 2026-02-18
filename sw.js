@@ -1,11 +1,11 @@
 
-const CACHE_NAME = 'caishen-pwa-v5';
+const CACHE_NAME = 'caishen-pwa-v6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   'https://i.ibb.co/HL7RGf9F/Chat-GPT-Image-8-ene-2026-10-46-40-p-m.png',
-  'https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png'
+  'https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png'
 ];
 
 self.addEventListener('install', event => {

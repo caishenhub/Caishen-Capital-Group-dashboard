@@ -88,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
       <div className="flex items-center">
         <div className="h-8 md:h-12 flex items-center cursor-pointer" onClick={() => navigate('/')}>
           <img 
-            src="https://i.ibb.co/Gfsh5zj9/Captura-de-pantalla-2025-02-18-a-la-s-6-20-39-p-m.png" 
+            src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" 
             alt="Caishen Capital" 
             className="h-full w-auto object-contain"
           />
