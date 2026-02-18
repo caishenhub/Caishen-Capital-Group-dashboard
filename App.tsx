@@ -77,7 +77,7 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
 
   return (
     <div key={key} className="flex h-screen bg-[#fcfcfc] overflow-hidden w-full">
-      <div className="fixed bottom-20 md:bottom-6 right-6 z-[60] pointer-events-none hidden xs:block">
+      <div className="fixed bottom-24 md:bottom-6 right-6 z-[60] pointer-events-none hidden xs:block">
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white shadow-premium transition-all duration-500 ${
           isCloudConnected ? 'border-green-100 text-green-600' : 'border-orange-100 text-orange-400'
         }`}>
@@ -95,9 +95,9 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
         
         <main 
           ref={mainContentRef}
-          className="flex-1 overflow-y-auto scroll-smooth relative z-10"
+          className="flex-1 overflow-y-auto scroll-smooth relative z-10 hide-scrollbar"
         >
-          <div className="max-w-[1600px] mx-auto pb-24 md:pb-12">
+          <div className="max-w-[1600px] mx-auto pb-32 md:pb-12">
             {children}
           </div>
         </main>

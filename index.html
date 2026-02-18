@@ -70,6 +70,16 @@
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: none;
         }
+        
+        /* Eliminación global de la barra de desplazamiento lateral */
+        * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        *::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Webkit */
+        }
+
         .pb-safe { padding-bottom: var(--sab); }
         .pt-safe { padding-top: var(--sat); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
