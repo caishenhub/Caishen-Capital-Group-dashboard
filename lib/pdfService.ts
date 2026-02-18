@@ -19,8 +19,12 @@ const addInstitutionalHeader = (doc: jsPDF, title: string) => {
   doc.text(title.toUpperCase(), marginX, 31);
 
   try {
-    // Se usa el nuevo logo en la parte superior derecha
-    doc.addImage(LOGO_URL, 'PNG', 155, 12, 25, 18);
+    /**
+     * AJUSTE DE DIMENSIONES:
+     * Se aumenta el ancho a 40mm y se reduce el alto a 12mm para mantener la horizontalidad 
+     * del logo original (aprox 3.3:1) y evitar el efecto "aplastado" o "estirado".
+     */
+    doc.addImage(LOGO_URL, 'PNG', 150, 12, 40, 12, undefined, 'FAST');
   } catch (e) {
     console.warn("No se pudo cargar el logo en el PDF", e);
   }
