@@ -440,15 +440,15 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target },
-                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon },
-                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Acumulado', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown },
-                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Liquidado en Nube', icon: DollarSign },
+                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target, isNegative: false },
+                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon, isNegative: false },
+                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Acumulado', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown, isNegative: stats.totalYield < 0 },
+                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Liquidado en Nube', icon: DollarSign, isNegative: stats.totalProfit < 0 },
               ].map((stat, i) => (
                 <div key={i} className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all">
                   <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><stat.icon size={20} /></div>
                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">{stat.label}</h3>
-                  <div className="text-3xl font-black tracking-tighter text-accent">{stat.value}</div>
+                  <div className={`text-3xl font-black tracking-tighter ${stat.isNegative ? 'text-red-600' : 'text-accent'}`}>{stat.value}</div>
                   <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-tight">{stat.sub}</p>
                 </div>
               ))}
@@ -485,8 +485,8 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                             {findValue(d, ['ESTATUS_PAGO']) || 'PENDIENTE'}
                           </span>
                         </td>
-                        <td className="px-8 py-5 text-right font-bold text-text-secondary">{(parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT'])) * 100).toFixed(2)}%</td>
-                        <td className="px-8 py-5 text-right font-black text-accent text-lg">${parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD'])).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td className={`px-8 py-5 text-right font-bold ${parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT'])) < 0 ? 'text-red-600' : 'text-text-secondary'}`}>{(parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT'])) * 100).toFixed(2)}%</td>
+                        <td className={`px-8 py-5 text-right font-black text-lg ${parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD'])) < 0 ? 'text-red-600' : 'text-accent'}`}>${parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD'])).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                       </tr>
                     )) : (
                       <tr><td colSpan={4} className="py-20 text-center text-text-muted font-black uppercase text-xs tracking-widest">Sin registros habilitados</td></tr>

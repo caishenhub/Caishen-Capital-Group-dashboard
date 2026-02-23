@@ -122,7 +122,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
     if (Date.now() - cached.timestamp < CACHE_DURATION) return cached.data;
   }
 
-  if (inFlightRequests[tabName]) return inFlightRequests[tabName];
+  if (tabName in inFlightRequests) return inFlightRequests[tabName];
 
   const fetchPromise = (async () => {
     try {
@@ -186,7 +186,7 @@ async function sendToScript(payload: any) {
     }
   } catch (err) {
     console.error("Communication error (POST):", err);
-    return { success: false, error: err.toString() };
+    return { success: false, error: String(err) };
   }
 }
 

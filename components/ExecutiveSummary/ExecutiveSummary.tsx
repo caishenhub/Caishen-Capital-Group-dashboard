@@ -282,16 +282,73 @@ const ExecutiveSummary: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-accent rounded-[50px] p-8 md:p-12 shadow-2xl flex flex-col min-h-[600px] text-white overflow-hidden relative group">
-          <header className="flex justify-between items-center mb-6 relative z-10">
-            <h3 className="text-primary text-sm font-black uppercase tracking-[0.2em]">Protocolo de Liquidez</h3>
-            <Zap size={24} className="text-primary animate-pulse shadow-neon" />
+        <div className="bg-[#1d1c2d] rounded-[50px] p-8 md:p-12 shadow-2xl flex flex-col min-h-[650px] text-white overflow-hidden relative group border border-white/5">
+          {/* Fondo Tecnológico - Grid sutil */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+            style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
+          </div>
+          
+          <header className="flex justify-between items-center mb-10 relative z-10">
+            <div className="space-y-1">
+              <h3 className="text-primary text-sm font-black uppercase tracking-[0.3em]">Protocolo de Liquidez</h3>
+              <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Distribución de Activos Institucionales</p>
+            </div>
+            <div className="size-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+              <Zap size={20} className="text-primary animate-pulse shadow-neon" />
+            </div>
           </header>
-          <div className="flex-1 flex flex-col justify-center items-center relative z-10 gap-10">
-            <div className="w-full max-w-[320px]">
+
+          <div className="flex-1 flex flex-col justify-center items-center relative z-10 gap-12">
+            <div className="w-full max-w-[400px]">
               <AssetDistributionDonut data={liveLiquidity} centerValue={masterAum} />
             </div>
+
+            {/* Distribución Detallada - Estilo Premium */}
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              {liveLiquidity.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className="flex items-center gap-5 p-6 rounded-[32px] bg-gradient-to-br from-white/[0.03] to-transparent border border-white/10 hover:border-primary/30 hover:bg-white/[0.07] transition-all group/liq animate-in fade-in slide-in-from-bottom-4 duration-700 relative overflow-hidden"
+                  style={{ animationDelay: `${idx * 150}ms` }}
+                >
+                  {/* Indicador de color con glow */}
+                  <div 
+                    className="size-4 rounded-full shrink-0 relative" 
+                    style={{ backgroundColor: item.color }}
+                  >
+                    <div className="absolute inset-0 rounded-full blur-[8px] opacity-60" style={{ backgroundColor: item.color }}></div>
+                  </div>
+
+                  <div className="flex-1 min-w-0 relative z-10">
+                    <div className="flex justify-between items-end mb-1.5">
+                      <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/80 truncate mr-2">{item.name}</span>
+                      <span className="text-sm font-black text-primary tabular-nums drop-shadow-neon-sm">{item.value}%</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full transition-all duration-1000 ease-out"
+                        style={{ width: `${item.value}%`, backgroundColor: item.color }}
+                      ></div>
+                    </div>
+                    {item.subtext && (
+                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.15em] mt-2 truncate">
+                        {item.subtext}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Efecto de hover */}
+                  <div className="absolute top-0 right-0 p-2 opacity-0 group-hover/liq:opacity-100 transition-opacity">
+                    <TrendingUp size={12} className="text-primary/40" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+          
+          {/* Decoraciones de fondo mejoradas */}
+          <div className="absolute -bottom-20 -right-20 size-80 bg-primary/10 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+          <div className="absolute -top-20 -left-20 size-60 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none"></div>
         </div>
       </div>
 
