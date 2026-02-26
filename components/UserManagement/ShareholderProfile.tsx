@@ -137,13 +137,20 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
       
       const targetUidNorm = norm(user.uid);
       const userDividends = allDividends.filter(d => {
-        const rowUid = findValue(d, ['UID_SOCIO', 'uid', 'id_socio']);
+        const rowUid = findValue(d, ['UID_SOCIO', 'uid', 'id_socio', 'columna 1', 'columna1']);
         return norm(rowUid) === targetUidNorm;
       });
 
       const freshUser = sociosData.find(u => norm(findValue(u, ['UID_SOCIO'])) === targetUidNorm);
       
       setDividends(userDividends);
+      
+      // Auto-select the most recent year with dividends
+      if (userDividends.length > 0) {
+        const maxYear = Math.max(...userDividends.map(d => parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0))));
+        if (maxYear > 0) setSelectedYear(maxYear);
+      }
+
       setConfig(masterConfig[0] || {});
       setRegisteredAccount(accountData);
       
@@ -182,8 +189,9 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
 
   const stats = useMemo(() => {
     const regDate = user.registrationDate ? new Date(user.registrationDate) : null;
-    const regYear = regDate ? regDate.getFullYear() : 0;
-    const regMonth = regDate ? regDate.getMonth() + 1 : 1;
+    const isValidDate = regDate && !isNaN(regDate.getTime());
+    const regYear = isValidDate ? regDate.getFullYear() : 0;
+    const regMonth = isValidDate ? regDate.getMonth() + 1 : 1;
 
     const yearDividends = dividends.filter(d => {
       const rowYear = parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0));
@@ -440,15 +448,15 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target, isNegative: false },
-                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon, isNegative: false },
-                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Acumulado', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown, isNegative: stats.totalYield < 0 },
-                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Liquidado en Nube', icon: DollarSign, isNegative: stats.totalProfit < 0 },
+                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target },
+                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon },
+                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Acumulado', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown },
+                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Liquidado en Nube', icon: DollarSign },
               ].map((stat, i) => (
                 <div key={i} className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all">
                   <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><stat.icon size={20} /></div>
                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">{stat.label}</h3>
-                  <div className={`text-3xl font-black tracking-tighter ${stat.isNegative ? 'text-red-600' : 'text-accent'}`}>{stat.value}</div>
+                  <div className="text-3xl font-black tracking-tighter text-accent">{stat.value}</div>
                   <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-tight">{stat.sub}</p>
                 </div>
               ))}
@@ -477,18 +485,27 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {stats.yearData.length > 0 ? stats.yearData.sort((a,b) => findValue(a, ['MES']) - findValue(b, ['MES'])).map((d, i) => (
-                      <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-8 py-5"><span className="text-sm font-black text-accent uppercase">{monthNames[findValue(d, ['MES']) - 1]}</span></td>
-                        <td className="px-8 py-5">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${findValue(d, ['ESTATUS_PAGO']) === 'PAGADO' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
-                            {findValue(d, ['ESTATUS_PAGO']) || 'PENDIENTE'}
-                          </span>
-                        </td>
-                        <td className={`px-8 py-5 text-right font-bold ${parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT'])) < 0 ? 'text-red-600' : 'text-text-secondary'}`}>{(parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT'])) * 100).toFixed(2)}%</td>
-                        <td className={`px-8 py-5 text-right font-black text-lg ${parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD'])) < 0 ? 'text-red-600' : 'text-accent'}`}>${parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD'])).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      </tr>
-                    )) : (
+                    {stats.yearData.length > 0 ? stats.yearData.sort((a,b) => findValue(a, ['MES']) - findValue(b, ['MES'])).map((d, i) => {
+                      const rentabilidad = parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT']));
+                      const utilidad = parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD']));
+                      
+                      return (
+                        <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-8 py-5"><span className="text-sm font-black text-accent uppercase">{monthNames[findValue(d, ['MES']) - 1]}</span></td>
+                          <td className="px-8 py-5">
+                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${findValue(d, ['ESTATUS_PAGO']) === 'PAGADO' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
+                              {findValue(d, ['ESTATUS_PAGO']) || 'PENDIENTE'}
+                            </span>
+                          </td>
+                          <td className={`px-8 py-5 text-right font-bold ${rentabilidad < 0 ? 'text-red-500' : 'text-text-secondary'}`}>
+                            {(rentabilidad * 100).toFixed(2)}%
+                          </td>
+                          <td className={`px-8 py-5 text-right font-black text-lg ${utilidad < 0 ? 'text-red-500' : 'text-accent'}`}>
+                            ${utilidad.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    }) : (
                       <tr><td colSpan={4} className="py-20 text-center text-text-muted font-black uppercase text-xs tracking-widest">Sin registros habilitados</td></tr>
                     )}
                   </tbody>

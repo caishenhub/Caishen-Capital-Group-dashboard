@@ -126,7 +126,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   const fetchPromise = (async () => {
     try {
-      const url = `${PROFILE_API_URL}?tab=${tabName}&t=${Date.now()}`;
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&t=${Date.now()}`;
       const response = await fetch(url, { 
         method: 'GET', 
         mode: 'cors', 

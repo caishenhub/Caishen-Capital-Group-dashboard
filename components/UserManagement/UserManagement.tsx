@@ -34,7 +34,8 @@ const UserManagement: React.FC = () => {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const data = await fetchTableData('LIBRO_ACCIONISTAS');
+      // Forzamos sincronización real con la nube pasando ignoreCache=true
+      const data = await fetchTableData('LIBRO_ACCIONISTAS', true);
       
       if (!data || data.length === 0) {
         setFetchError("El registro en la nube está vacío o no es accesible.");
@@ -292,7 +293,7 @@ const UserManagement: React.FC = () => {
                     <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[9px] font-black border shadow-sm uppercase tracking-widest ${
                       user.status.toLowerCase() === 'activo' ? 'bg-green-50 text-green-700 border-green-100' :
                       user.status.toLowerCase() === 'inactivo' ? 'bg-red-50 text-red-700 border-red-100' :
-                      'bg-yellow-50 text-yellow-700 border-yellow-100'
+                      'bg-orange-50 text-orange-700 border-orange-100'
                     }`}>
                       <span className={`size-1.5 rounded-full ${user.status.toLowerCase() === 'activo' ? 'bg-green-500 animate-pulse' : 'bg-current'}`}></span>
                       {user.status}
