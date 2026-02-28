@@ -43,14 +43,14 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
-  const loadConfigs = async (isBackground = false) => {
+  const loadConfigs = async (isBackground = false, forceRefresh = false) => {
     if (!isBackground) setIsLoading(true);
     try {
       const [configData, sociosData, performanceData, pData] = await Promise.all([
-        fetchTableData('CONFIG_MAESTRA'),
-        fetchTableData('LIBRO_ACCIONISTAS'),
-        fetchTableData('HISTORIAL_RENDIMIENTOS'),
-        fetchPortfolioStructure()
+        fetchTableData('CONFIG_MAESTRA', forceRefresh),
+        fetchTableData('LIBRO_ACCIONISTAS', forceRefresh),
+        fetchTableData('HISTORIAL_RENDIMIENTOS', forceRefresh),
+        fetchPortfolioStructure(forceRefresh)
       ]);
       
       setFullConfig(configData || []);
@@ -84,8 +84,13 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadConfigs();
-    const interval = setInterval(() => loadConfigs(true), 120000);
+    // Load cached data first for instant render
+    loadConfigs(false, false).then(() => {
+      // Then fetch fresh data in the background
+      setTimeout(() => loadConfigs(true, true), 1000);
+    });
+    
+    const interval = setInterval(() => loadConfigs(true, true), 120000);
     return () => clearInterval(interval);
   }, []);
 

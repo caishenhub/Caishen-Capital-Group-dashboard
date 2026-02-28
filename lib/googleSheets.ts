@@ -72,7 +72,34 @@ const PROFILE_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL;
 
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
 const inFlightRequests: Record<string, Promise<any[]>> = {};
-const CACHE_DURATION = 1000 * 60 * 10;
+const CACHE_DURATION = 1000 * 60 * 10; // 10 minutes
+
+// Helper to safely read from localStorage
+const getLocalCache = (tabName: string) => {
+  try {
+    const cached = localStorage.getItem(`ccg_cache_${tabName}`);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.timestamp < CACHE_DURATION) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+  return null;
+};
+
+// Helper to safely write to localStorage
+const setLocalCache = (tabName: string, data: any[]) => {
+  try {
+    const cacheData = { data, timestamp: Date.now() };
+    localStorage.setItem(`ccg_cache_${tabName}`, JSON.stringify(cacheData));
+    prefetchCache[tabName] = cacheData;
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+};
 
 export const norm = (str: any): string => 
   String(str || '')
@@ -117,9 +144,16 @@ export async function checkConnection(): Promise<boolean> {
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!PROFILE_API_URL) return [];
 
-  if (!ignoreCache && prefetchCache[tabName]) {
-    const cached = prefetchCache[tabName];
-    if (Date.now() - cached.timestamp < CACHE_DURATION) return cached.data;
+  if (!ignoreCache) {
+    if (prefetchCache[tabName]) {
+      const cached = prefetchCache[tabName];
+      if (Date.now() - cached.timestamp < CACHE_DURATION) return cached.data;
+    }
+    const localCached = getLocalCache(tabName);
+    if (localCached) {
+      prefetchCache[tabName] = localCached;
+      return localCached.data;
+    }
   }
 
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
@@ -152,7 +186,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
         return cleanRow;
       });
 
-      prefetchCache[tabName] = { data: processedData, timestamp: Date.now() };
+      setLocalCache(tabName, processedData);
       return processedData;
     } catch (err) {
       console.error(`Fetch error for ${tabName}:`, err);
@@ -419,8 +453,8 @@ export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> 
   }
 }
 
-export async function fetchPortfolioStructure(): Promise<PortfolioCategory[]> {
-  const data = await fetchTableData('ESTRUCTURA_PORTAFOLIO');
+export async function fetchPortfolioStructure(ignoreCache = false): Promise<PortfolioCategory[]> {
+  const data = await fetchTableData('ESTRUCTURA_PORTAFOLIO', ignoreCache);
   return data.map(item => ({
     name: String(findValue(item, ['CATEGORIA', 'name', 'categoria']) || 'Otros'),
     value: parseSheetNumber(findValue(item, ['PORCENTAJE', 'value', 'porcentaje'])),
