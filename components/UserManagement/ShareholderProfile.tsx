@@ -391,28 +391,28 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         </div>
 
         {/* Banner de Identidad */}
-        <header className="bg-white rounded-[40px] shadow-sm border border-surface-border p-6 md:p-10 relative overflow-hidden">
+        <header className="bg-white rounded-[40px] shadow-sm border border-surface-border p-5 md:p-10 relative overflow-hidden">
           <div className="flex flex-col md:flex-row gap-8 md:items-center justify-between relative z-10">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 md:gap-6">
               <div 
                 onClick={() => setActiveView('account')}
-                className="size-20 lg:size-24 rounded-[32px] bg-accent flex items-center justify-center font-black text-2xl text-primary shadow-2xl uppercase shrink-0 relative group cursor-pointer overflow-hidden"
+                className="size-16 md:size-20 lg:size-24 rounded-[24px] md:rounded-[32px] bg-accent flex items-center justify-center font-black text-xl md:text-2xl text-primary shadow-2xl uppercase shrink-0 relative group cursor-pointer overflow-hidden"
               >
                 <span>{user.initials || 'S'}</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 <h1 
                   onClick={() => setActiveView('account')}
-                  className="text-3xl lg:text-4xl font-black text-accent tracking-tighter uppercase leading-none cursor-pointer hover:text-primary transition-colors"
+                  className="text-2xl md:text-3xl lg:text-4xl font-black text-accent tracking-tighter uppercase leading-none cursor-pointer hover:text-primary transition-colors"
                 >
                   {user.name}
                 </h1>
-                <div className="flex items-center gap-4">
-                  <div className="px-3 py-1.5 bg-[#faffd1] text-accent text-[10px] font-black rounded-lg uppercase tracking-widest border border-[#e5ebbc]">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                  <div className="px-3 py-1.5 bg-[#faffd1] text-accent text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-widest border border-[#e5ebbc]">
                     {user.uid}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.1em]">
+                    <span className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.1em]">
                       Vinculado el: <span className="text-accent">{formatDate(user.registrationDate)}</span>
                     </span>
                   </div>
@@ -421,18 +421,18 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
             </div>
 
             {/* Pestañas de Navegación de Perfil */}
-            <div className="flex bg-surface-subtle p-1.5 rounded-[24px] border border-surface-border shadow-sm">
+            <div className="flex bg-surface-subtle p-1 rounded-[20px] md:rounded-[24px] border border-surface-border shadow-sm w-full md:w-auto">
               <button 
                 onClick={() => setActiveView('finance')}
-                className={`flex items-center gap-3 px-8 py-3 rounded-2xl text-[11px] font-black uppercase transition-all ${activeView === 'finance' ? 'bg-white text-accent shadow-premium' : 'text-text-muted hover:text-accent'}`}
+                className={`flex-1 md:flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase transition-all ${activeView === 'finance' ? 'bg-white text-accent shadow-premium' : 'text-text-muted hover:text-accent'}`}
               >
-                <PieIcon size={16} /> Estado de Cuenta
+                <PieIcon size={16} /> <span className="whitespace-nowrap">Estado de Cuenta</span>
               </button>
               <button 
                 onClick={() => setActiveView('account')}
-                className={`flex items-center gap-3 px-8 py-3 rounded-2xl text-[11px] font-black uppercase transition-all ${activeView === 'account' ? 'bg-white text-accent shadow-premium' : 'text-text-muted hover:text-accent'}`}
+                className={`flex-1 md:flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase transition-all ${activeView === 'account' ? 'bg-white text-accent shadow-premium' : 'text-text-muted hover:text-accent'}`}
               >
-                <UserCheck size={16} /> Perfil & Seguridad
+                <UserCheck size={16} /> <span className="whitespace-nowrap">Perfil & Seguridad</span>
               </button>
             </div>
           </div>
@@ -601,17 +601,17 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
             </div>
 
             {/* Seguridad Maestra (Compacto) */}
-            <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="flex items-center gap-6">
-                <div className="p-4 bg-accent rounded-2xl text-primary shadow-lg"><Lock size={28} /></div>
+            <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-6 md:p-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex items-center gap-4 md:gap-6">
+                <div className="p-3 md:p-4 bg-accent rounded-2xl text-primary shadow-lg"><Lock className="size-6 md:size-7" /></div>
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black text-accent tracking-tight uppercase leading-none">Seguridad Maestra</h3>
-                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Protocolo de Acceso Certificado mediante PIN de 4 Dígitos</p>
+                  <h3 className="text-lg md:text-xl font-black text-accent tracking-tight uppercase leading-none">Seguridad Maestra</h3>
+                  <p className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-widest">Protocolo de Acceso Certificado mediante PIN de 4 Dígitos</p>
                 </div>
               </div>
               <button 
                 onClick={() => { setPinStep('verify'); setPinBuffer(''); setShowPinChange(true); }}
-                className="bg-accent text-white font-black px-10 py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-black transition-all uppercase text-[10px] tracking-widest shadow-md shrink-0"
+                className="w-full md:w-auto bg-accent text-white font-black px-8 md:px-10 py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-black transition-all uppercase text-[10px] tracking-widest shadow-md shrink-0"
               >
                 <Fingerprint size={18} className="text-primary" />
                 Actualizar PIN Maestro
@@ -619,10 +619,10 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
             </div>
 
             {/* REGISTRO DE CANAL PARA DISPERSIÓN DE UTILIDADES - ANCHO COMPLETO */}
-            <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-12 relative overflow-hidden space-y-10">
+            <div className="bg-white rounded-[40px] shadow-premium border border-surface-border p-5 md:p-12 relative overflow-hidden space-y-10">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-[#faffd1] rounded-2xl text-accent border border-[#e5ebbc] shadow-sm"><Wallet size={24} /></div>
-                <h2 className="text-2xl font-black text-accent tracking-tighter uppercase leading-none">Registro de Canal para Dispersión de Utilidades</h2>
+                <h2 className="text-xl md:text-2xl font-black text-accent tracking-tighter uppercase leading-none">Registro de Canal para Dispersión de Utilidades</h2>
               </div>
 
               {/* BANNER DE ADVERTENCIA */}
@@ -631,38 +631,38 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                 <div className="space-y-1">
                   <h4 className="text-[11px] font-black text-[#92400e] uppercase tracking-widest">REGISTRO OBLIGATORIO DE MÉTODO DE PAGO</h4>
                   <p className="text-[11px] text-[#b45309] leading-relaxed font-bold">
-                    Caishen Capital Group <span className="font-black">solo realizará depósitos a la tarjeta, cuenta bancaria o billetera registrada</span> en esta sección oficial. Los datos registrados deben coincidir plenamente con la titularidad legal del socio.
+                    Caishen Capital Group <span className="font-black">solo realizará depósitos a la cuenta internacional, cuenta bancaria o billetera registrada</span> en esta sección oficial. Los datos registrados deben coincidir plenamente con la titularidad legal del socio.
                   </p>
                   <p className="text-[11px] text-[#b45309] font-black underline mt-1">Sin un método validado por el Comité, las solicitudes de liquidación NO PODRÁN SER PROCESADAS.</p>
                 </div>
               </div>
 
               {/* TABS DE MÉTODOS */}
-              <div className="flex bg-surface-subtle p-1.5 rounded-2xl border border-surface-border w-fit">
+              <div className="grid grid-cols-1 sm:grid-cols-3 md:flex bg-surface-subtle p-1.5 rounded-2xl border border-surface-border w-full md:w-fit gap-1">
                 <button 
                   onClick={() => setActiveWithdrawalTab('debit')}
-                  className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'debit' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
+                  className={`flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 rounded-xl text-[10px] md:text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'debit' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
                 >
-                  <CardIcon size={16} /> Tarjeta Débito
+                  <Globe size={16} /> <span className="whitespace-nowrap">Cuenta Internacional</span>
                 </button>
                 <button 
                   onClick={() => setActiveWithdrawalTab('bank')}
-                  className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'bank' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
+                  className={`flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 rounded-xl text-[10px] md:text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'bank' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
                 >
-                  <Landmark size={16} /> Cuenta Bancaria
+                  <Landmark size={16} /> <span className="whitespace-nowrap">Cuenta Bancaria</span>
                 </button>
                 <button 
                   onClick={() => setActiveWithdrawalTab('crypto')}
-                  className={`flex items-center gap-3 px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'crypto' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
+                  className={`flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 rounded-xl text-[10px] md:text-[11px] font-black uppercase transition-all ${activeWithdrawalTab === 'crypto' ? 'bg-white text-accent shadow-md' : 'text-text-muted hover:text-accent'}`}
                 >
-                  <Bitcoin size={16} /> Billetera Crypto
+                  <Bitcoin size={16} /> <span className="whitespace-nowrap">Billetera Crypto</span>
                 </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                 {/* CARD PREVIEW - LATERAL EXPANDIDO */}
                 <div className="lg:col-span-5 space-y-6">
-                  <div className="relative aspect-[1.6/1] w-full rounded-[36px] overflow-hidden shadow-2xl group border border-white/5">
+                  <div className="relative aspect-[1.6/1] w-full rounded-[24px] md:rounded-[36px] overflow-hidden shadow-2xl group border border-white/5">
                     <div className={`absolute inset-0 transition-all duration-700 ${
                       activeWithdrawalTab === 'crypto' ? 'bg-gradient-to-br from-[#4d3d2c] to-[#1d1c2d]' :
                       activeWithdrawalTab === 'bank' ? 'bg-gradient-to-br from-[#1d1c2d] to-[#43415f]' :
@@ -671,26 +671,26 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                     
                     {activeWithdrawalTab === 'crypto' && <Bitcoin size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
                     {activeWithdrawalTab === 'bank' && <Landmark size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
-                    {activeWithdrawalTab === 'debit' && <CardIcon size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
+                    {activeWithdrawalTab === 'debit' && <Globe size={200} className="absolute -right-12 -bottom-12 opacity-[0.04] text-white" />}
 
-                    <div className="relative z-10 p-10 h-full flex flex-col justify-between text-white">
+                    <div className="relative z-10 p-6 md:p-10 h-full flex flex-col justify-between text-white">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
                           <div className="size-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
                             {activeWithdrawalTab === 'crypto' ? <Bitcoin size={24} className="text-primary" /> : 
                              activeWithdrawalTab === 'bank' ? <Landmark size={24} className="text-primary" /> : 
-                             <CardIcon size={24} className="text-primary" />}
+                             <Globe size={24} className="text-primary" />}
                           </div>
                           <div>
                              <p className="text-[10px] font-black uppercase tracking-widest text-white/50 leading-none mb-1">{
                                activeWithdrawalTab === 'crypto' ? 'BILLETERA CRYPTO' : 
                                activeWithdrawalTab === 'bank' ? 'CUENTA BANCARIA' : 
-                               'TARJETA DÉBITO'
+                               'CUENTA INTERNACIONAL'
                              }</p>
                              <h3 className="font-black text-xl tracking-tight uppercase leading-none">
                                {activeWithdrawalTab === 'crypto' ? formData.cryptoCurrency : 
                                 activeWithdrawalTab === 'bank' ? formData.bankName : 
-                                'SISTEMA VISA/MC'}
+                                'TRANSFERENCIA SWIFT/IBAN'}
                              </h3>
                           </div>
                         </div>
@@ -787,7 +787,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   </div>
 
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-accent uppercase tracking-widest ml-1">{activeWithdrawalTab === 'crypto' ? 'Identificador de Billetera (Wallet Address)' : 'Número de Cuenta / Tarjeta Certificada'}</label>
+                     <label className="text-[10px] font-black text-accent uppercase tracking-widest ml-1">{activeWithdrawalTab === 'crypto' ? 'Identificador de Billetera (Wallet Address)' : 'Número de Cuenta / IBAN / SWIFT'}</label>
                      <div className="relative">
                         <QrCode className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted/40" size={18} />
                         <input 

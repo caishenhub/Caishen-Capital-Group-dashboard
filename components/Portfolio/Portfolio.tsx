@@ -8,14 +8,13 @@ import {
   Shield, 
   BarChart3, 
   Layers, 
-  FileText, 
   X,
   LayoutGrid,
   ShieldCheck,
-  Zap
+  Zap,
+  ExternalLink
 } from 'lucide-react';
 import AssetDonutChart from './AssetDonutChart';
-import DetailedOperationalReport from './DetailedOperationalReport';
 import { 
   PortfolioCategory, 
   PortfolioKpi,
@@ -27,7 +26,6 @@ import {
 } from '../../lib/googleSheets';
 
 const Portfolio: React.FC = () => {
-  const [showModal, setShowModal] = useState(false);
   const [portfolioData, setPortfolioData] = useState<PortfolioCategory[]>([]);
   const [kpis, setKpis] = useState<PortfolioKpi[]>([]);
   const [globalAum, setGlobalAum] = useState(0);
@@ -83,13 +81,15 @@ const Portfolio: React.FC = () => {
           <h1 className="text-[#1d1c2d] text-3xl md:text-5xl font-black tracking-tighter mb-1 uppercase leading-none">Gestión Institucional</h1>
           <p className="text-text-secondary text-xs md:text-lg font-medium mt-2">Administración privada de activos y exposición de capital corporativo.</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
+        <a 
+          href="https://libros-de-operaciones.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
           className="w-full md:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-[#1d1c2d] text-white hover:bg-black rounded-2xl transition-all shadow-xl active:scale-95 group"
         >
-          <FileText size={18} className="text-[#ceff04] group-hover:scale-110 transition-transform" />
-          <span className="text-[11px] font-black uppercase tracking-widest">Informe Estratégico</span>
-        </button>
+          <ExternalLink size={18} className="text-[#ceff04] group-hover:scale-110 transition-transform" />
+          <span className="text-[11px] font-black uppercase tracking-widest">Libros de Operaciones</span>
+        </a>
       </header>
 
       {/* TARJETAS KPI */}
@@ -204,41 +204,6 @@ const Portfolio: React.FC = () => {
              </div>
         </div>
       </div>
-
-      {showModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-2 md:p-4">
-          <div className="absolute inset-0 bg-accent/80 backdrop-blur-2xl animate-in fade-in duration-300" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-5xl h-[92vh] md:max-h-[95vh] bg-white rounded-[24px] md:rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
-            <header className="px-6 py-4 md:p-10 border-b border-surface-border flex justify-between items-center bg-white shrink-0">
-              <div className="flex items-center gap-3 md:gap-6">
-                <div className="p-2 md:p-4 bg-[#1d1c2d] rounded-xl md:rounded-[24px] text-[#ceff04] shadow-xl">
-                  {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
-                  <ShieldCheck className="size-5 md:size-7" />
-                </div>
-                <div>
-                  <h2 className="text-lg md:text-2xl font-black text-[#1d1c2d] tracking-tighter uppercase leading-none">Análisis Estratégico</h2>
-                  <p className="text-[8px] md:text-[10px] font-black text-[#9ca3af] uppercase tracking-widest mt-0.5 md:mt-1">Intelligence Verification v4.2</p>
-                </div>
-              </div>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f8f9fa] rounded-full transition-all text-[#9ca3af] hover:text-[#1d1c2d]">
-                {/* Fixed: Remove non-existent md:size and use responsive Tailwind classes */}
-                <X className="size-5 md:size-6" />
-              </button>
-            </header>
-            <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth hide-scrollbar bg-white">
-              <DetailedOperationalReport />
-            </div>
-            <footer className="px-6 py-4 md:p-10 border-t border-surface-border bg-white flex justify-end shrink-0">
-              <button 
-                onClick={() => setShowModal(false)}
-                className="w-full md:w-auto bg-[#1d1c2d] text-[#ceff04] font-black px-8 md:px-12 py-3.5 md:py-4 rounded-xl md:rounded-[20px] hover:bg-black transition-all uppercase text-[9px] md:text-[10px] tracking-widest shadow-2xl active:scale-95"
-              >
-                Finalizar Consulta
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
