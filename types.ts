@@ -41,7 +41,7 @@ export interface Report {
   color?: string; // Nuevo campo para color personalizado
 }
 
-export interface CorporateNotice {
+export interface CorporateNotification {
   id: string;
   title: string;
   date: string;

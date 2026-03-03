@@ -10,29 +10,29 @@ import {
   Clock,
   LayoutGrid
 } from 'lucide-react';
-import { publishNotice, fetchCorporateNotices } from '../../lib/googleSheets';
-import { CorporateNotice } from '../../types';
+import { publishNotification, fetchNotifications } from '../../lib/googleSheets';
+import { CorporateNotification } from '../../types';
 
 const NotificationControl: React.FC = () => {
-  const [notices, setNotices] = useState<CorporateNotice[]>([]);
+  const [notifications, setNotifications] = useState<CorporateNotification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [form, setForm] = useState({
     title: '',
     description: '',
-    type: 'Info' as CorporateNotice['type'],
+    type: 'Info' as CorporateNotification['type'],
     fullContent: ''
   });
 
-  const loadNotices = async () => {
+  const loadNotifications = async () => {
     setIsLoading(true);
-    const data = await fetchCorporateNotices(true);
-    setNotices(data);
+    const data = await fetchNotifications(true);
+    setNotifications(data);
     setIsLoading(false);
   };
 
   useEffect(() => {
-    loadNotices();
+    loadNotifications();
   }, []);
 
   const handlePublish = async (e: React.FormEvent) => {
@@ -40,11 +40,11 @@ const NotificationControl: React.FC = () => {
     if (!form.title || !form.description) return;
     
     setIsSending(true);
-    const res = await publishNotice(form);
+    const res = await publishNotification(form);
     
     if (res.success) {
       setForm({ title: '', description: '', type: 'Info', fullContent: '' });
-      loadNotices();
+      loadNotifications();
     }
     setIsSending(false);
   };
@@ -59,10 +59,10 @@ const NotificationControl: React.FC = () => {
             </div>
             <h2 className="text-accent text-3xl font-black tracking-tighter uppercase">Consola de Comunicados</h2>
           </div>
-          <p className="text-text-secondary font-medium text-sm">Emisión de avisos corporativos y alertas de seguridad para el Dashboard.</p>
+          <p className="text-text-secondary font-medium text-sm">Emisión de notificaciones corporativas y alertas de seguridad para el Dashboard.</p>
         </div>
         <button 
-          onClick={loadNotices}
+          onClick={loadNotifications}
           className="flex items-center gap-2 px-6 py-3 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95"
         >
           <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
@@ -142,7 +142,7 @@ const NotificationControl: React.FC = () => {
               <Clock size={18} className="text-accent" />
               <h3 className="text-sm font-black uppercase tracking-widest text-accent">Historial en Nube</h3>
             </div>
-            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{notices.length} Registros</span>
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{notifications.length} Registros</span>
           </header>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-[600px] hide-scrollbar">
@@ -152,7 +152,7 @@ const NotificationControl: React.FC = () => {
                 <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando...</p>
               </div>
             ) : (
-              notices.map((n) => (
+              notifications.map((n) => (
                 <div key={n.id} className="p-5 border border-surface-border rounded-3xl hover:border-primary/50 transition-all group bg-surface-subtle/20">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">

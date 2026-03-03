@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Bell, Menu } from 'lucide-react';
-import { fetchCorporateNotices } from '../lib/googleSheets';
-import { CorporateNotice } from '../types';
+import { fetchNotifications } from '../lib/googleSheets';
+import { CorporateNotification } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
@@ -11,30 +11,30 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
-  const [notices, setNotices] = useState<CorporateNotice[]>([]);
+  const [notifications, setNotifications] = useState<CorporateNotification[]>([]);
   const [lastReadId, setLastReadId] = useState(localStorage.getItem('last_read_notice') || '');
   const navigate = useNavigate();
 
-  const loadNotices = async () => {
+  const loadNotifications = async () => {
     try {
-      const data = await fetchCorporateNotices(true);
-      setNotices(data);
+      const data = await fetchNotifications(true);
+      setNotifications(data);
     } catch (e) {
       console.error("Error al cargar notificaciones en el header", e);
     }
   };
 
   useEffect(() => {
-    loadNotices();
-    const interval = setInterval(loadNotices, 60000); 
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 60000); 
     return () => clearInterval(interval);
   }, []);
 
-  const hasNewNotices = notices.length > 0 && notices[0].id !== lastReadId;
+  const hasNewNotifications = notifications.length > 0 && notifications[0].id !== lastReadId;
 
-  const handleNavigateToNotices = () => {
-    if (notices.length > 0) {
-      const latestId = notices[0].id;
+  const handleNavigateToNotifications = () => {
+    if (notifications.length > 0) {
+      const latestId = notifications[0].id;
       localStorage.setItem('last_read_notice', latestId);
       setLastReadId(latestId);
     }
@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
     navigate('/summary');
     
     setTimeout(() => {
-      const element = document.getElementById('seccion-avisos');
+      const element = document.getElementById('seccion-notificaciones');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -68,18 +68,18 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
           </div>
 
           <button 
-            onClick={handleNavigateToNotices}
-            title="Ver avisos corporativos"
+            onClick={handleNavigateToNotifications}
+            title="Ver notificaciones corporativas"
             className="relative p-2 md:p-2.5 bg-surface-subtle hover:bg-white border border-transparent hover:border-surface-border rounded-xl transition-all group"
           >
             <Bell 
               size={18} 
               className={`transition-all duration-300 ${
-                hasNewNotices ? 'text-accent scale-110' : 'text-text-muted opacity-40'
+                hasNewNotifications ? 'text-accent scale-110' : 'text-text-muted opacity-40'
               }`} 
             />
             
-            {hasNewNotices && (
+            {hasNewNotifications && (
               <span className="absolute top-0.5 right-0.5 size-2.5 md:size-3.5 bg-primary rounded-full border-2 border-white shadow-[0_0_8px_rgba(206,255,4,0.6)] animate-pulse">
               </span>
             )}

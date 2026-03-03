@@ -1,6 +1,6 @@
 
 import { GOOGLE_CONFIG, MOCK_REPORTS } from '../constants';
-import { Report, ReportSection, CorporateNotice } from '../types';
+import { Report, ReportSection, CorporateNotification } from '../types';
 
 export interface Execution {
   ticket: string;
@@ -273,13 +273,13 @@ export async function fetchLiquidityProtocol(ignoreCache = false): Promise<Liqui
     .sort((a, b) => a.order - b.order);
 }
 
-export async function fetchCorporateNotices(ignoreCache = false): Promise<CorporateNotice[]> {
-  const data = await fetchTableData('AVISOS_CORPORATIVOS', ignoreCache);
+export async function fetchNotifications(ignoreCache = false): Promise<CorporateNotification[]> {
+  const data = await fetchTableData('NOTIFICACIONES', ignoreCache);
   return data.map((row, idx) => {
     const rawDate = findValue(row, ['FECHA', 'date', 'fecha']);
     return {
       id: String(findValue(row, ['ID', 'id']) || `notice-${idx}`),
-      title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Aviso Corporativo'),
+      title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Notificación Corporativa'),
       date: formatSheetDate(rawDate), 
       description: String(findValue(row, ['DESCRIPCION', 'description', 'descripcion']) || ''),
       type: (findValue(row, ['TIPO', 'type', 'tipo']) || 'Info') as any,
@@ -289,10 +289,10 @@ export async function fetchCorporateNotices(ignoreCache = false): Promise<Corpor
   }).reverse();
 }
 
-export async function publishNotice(notice: Partial<CorporateNotice>): Promise<{success: boolean}> {
+export async function publishNotification(notice: Partial<CorporateNotification>): Promise<{success: boolean}> {
   const res = await sendToScript({
     action: 'append',
-    tab: 'AVISOS_CORPORATIVOS',
+    tab: 'NOTIFICACIONES',
     data: {
       ID: `N-${Date.now()}`,
       FECHA: new Date().toISOString(),

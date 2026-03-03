@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { X, Calendar, Info, AlertTriangle, CheckCircle2, ImageIcon } from 'lucide-react';
-import { CorporateNotice } from '../../types';
+import { CorporateNotification } from '../../types';
 
 interface NoticeModalProps {
-  notice: CorporateNotice;
+  notice: CorporateNotification;
   onClose: () => void;
 }
 
@@ -45,7 +45,7 @@ const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose }) => {
               {getIcon()}
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1 opacity-70">Aviso Institucional</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1 opacity-70">Notificación Institucional</p>
               <h3 className="text-xl font-black text-accent tracking-tighter uppercase leading-tight">{notice.title}</h3>
             </div>
           </div>
@@ -84,7 +84,7 @@ const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose }) => {
             className="w-full bg-accent text-white font-black py-5 rounded-2xl hover:bg-black transition-all uppercase text-[11px] tracking-[0.2em] shadow-xl active:scale-95 flex items-center justify-center gap-3"
           >
             <CheckCircle2 size={18} className="text-primary" />
-            <span>Entendido, Cerrar Aviso</span>
+            <span>Entendido, Cerrar Notificación</span>
           </button>
         </footer>
       </div>

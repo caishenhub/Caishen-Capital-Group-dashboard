@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         break;
       case '/summary':
         fetchTableData('RESUMEN_KPI');
-        fetchTableData('AVISOS_CORPORATIVOS');
+        fetchTableData('NOTIFICACIONES');
         fetchTableData('PROTOCOLO_LIQUIDEZ');
         break;
       case '/reports':

@@ -19,9 +19,9 @@ import {
 } from 'lucide-react';
 import AssetDistributionDonut from './AssetDistributionDonut';
 import NoticeModal from './NoticeModal';
-import { CorporateNotice } from '../../types';
+import { CorporateNotification } from '../../types';
 import DetailedOperationalReport from '../Portfolio/DetailedOperationalReport';
-import { fetchCorporateNotices, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem } from '../../lib/googleSheets';
+import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem } from '../../lib/googleSheets';
 
 interface KpiDetail {
   id: string;
@@ -45,13 +45,13 @@ const ExecutiveSummary: React.FC = () => {
   const [strategicPreview, setStrategicPreview] = useState<StrategicReportSection | null>(null);
   const [liveKpis, setLiveKpis] = useState<Record<string, ExecutiveKpi>>({});
   const [liveLiquidity, setLiveLiquidity] = useState<LiquidityItem[]>([]);
-  const [liveNotices, setLiveNotices] = useState<CorporateNotice[]>([]);
-  const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => {
+  const [liveNotifications, setLiveNotifications] = useState<CorporateNotification[]>([]);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('ccg_read_notices');
     return saved ? JSON.parse(saved) : [];
   });
   const [masterAum, setMasterAum] = useState<string>('---');
-  const [selectedNotice, setSelectedNotice] = useState<CorporateNotice | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<CorporateNotification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const formatCurrency = (val: string | number | undefined) => {
@@ -71,10 +71,10 @@ const ExecutiveSummary: React.FC = () => {
     if (!ignoreCache) setIsLoading(true);
     
     try {
-      const [reportData, kpiData, noticesData, liquidityData, configData] = await Promise.all([
+      const [reportData, kpiData, notificationsData, liquidityData, configData] = await Promise.all([
         fetchStrategicReport(ignoreCache),
         fetchExecutiveKpis(ignoreCache),
-        fetchCorporateNotices(ignoreCache),
+        fetchNotifications(ignoreCache),
         fetchLiquidityProtocol(ignoreCache),
         fetchTableData('CONFIG_MAESTRA', ignoreCache)
       ]);
@@ -82,7 +82,7 @@ const ExecutiveSummary: React.FC = () => {
       const previewBlock = reportData.find(s => s.tipo === 'PREVIEW') || reportData[0];
       setStrategicPreview(previewBlock);
       setLiveKpis(kpiData);
-      setLiveNotices(noticesData);
+      setLiveNotifications(notificationsData);
       setLiveLiquidity(liquidityData);
 
       const aumRaw = findValue(configData[0], ['AUM_TOTAL_FONDO', 'total_aum', 'aum']);
@@ -106,26 +106,26 @@ const ExecutiveSummary: React.FC = () => {
     return kpi.valor || '---';
   };
 
-  const pendingNotices = useMemo(() => {
-    return liveNotices.filter(n => !readNoticeIds.includes(n.id));
-  }, [liveNotices, readNoticeIds]);
+  const pendingNotifications = useMemo(() => {
+    return liveNotifications.filter(n => !readNotificationIds.includes(n.id));
+  }, [liveNotifications, readNotificationIds]);
 
   const markAsRead = (id: string) => {
-    if (!readNoticeIds.includes(id)) {
-      const updated = [...readNoticeIds, id];
-      setReadNoticeIds(updated);
+    if (!readNotificationIds.includes(id)) {
+      const updated = [...readNotificationIds, id];
+      setReadNotificationIds(updated);
       localStorage.setItem('ccg_read_notices', JSON.stringify(updated));
     }
   };
 
-  const handleNoticeClick = (notice: CorporateNotice) => {
-    setSelectedNotice(notice);
+  const handleNotificationClick = (notification: CorporateNotification) => {
+    setSelectedNotification(notification);
   };
 
-  const handleCloseNotice = () => {
-    if (selectedNotice) {
-      markAsRead(selectedNotice.id);
-      setSelectedNotice(null);
+  const handleCloseNotification = () => {
+    if (selectedNotification) {
+      markAsRead(selectedNotification.id);
+      setSelectedNotification(null);
     }
   };
 
@@ -238,35 +238,35 @@ const ExecutiveSummary: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div id="seccion-avisos" className="bg-white rounded-[50px] p-8 md:p-12 border border-surface-border shadow-premium flex flex-col min-h-[600px] relative overflow-hidden">
+        <div id="seccion-notificaciones" className="bg-white rounded-[50px] p-8 md:p-12 border border-surface-border shadow-premium flex flex-col min-h-[600px] relative overflow-hidden">
           <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 shrink-0">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Bell size={28} className={pendingNotices.length > 0 ? 'text-accent animate-bounce' : 'text-text-muted opacity-30'} />
-                {pendingNotices.length > 0 && (
+                <Bell size={28} className={pendingNotifications.length > 0 ? 'text-accent animate-bounce' : 'text-text-muted opacity-30'} />
+                {pendingNotifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 size-3.5 bg-primary rounded-full border-2 border-white shadow-neon"></span>
                 )}
               </div>
-              <h3 className="text-accent text-xl font-black uppercase tracking-widest">Avisos Pendientes ({pendingNotices.length})</h3>
+              <h3 className="text-accent text-xl font-black uppercase tracking-widest">Notificaciones Pendientes ({pendingNotifications.length})</h3>
             </div>
           </header>
 
           <div className="flex-1 overflow-y-auto space-y-6 hide-scrollbar">
-            {pendingNotices.length > 0 ? (
-              pendingNotices.map((notice) => (
+            {pendingNotifications.length > 0 ? (
+              pendingNotifications.map((notification) => (
                 <div 
-                  key={notice.id} 
-                  onClick={() => handleNoticeClick(notice)}
+                  key={notification.id} 
+                  onClick={() => handleNotificationClick(notification)}
                   className="bg-surface-subtle/30 rounded-[40px] p-6 md:p-8 border border-surface-border transition-all hover:bg-white hover:shadow-premium hover:-translate-y-1 cursor-pointer group animate-in slide-in-from-right duration-500"
                 >
                   <div className="flex justify-between items-start gap-4 mb-4">
-                    <h4 className="text-accent text-base font-black uppercase line-clamp-1">{notice.title}</h4>
-                    <span className="text-[8px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{notice.date}</span>
+                    <h4 className="text-accent text-base font-black uppercase line-clamp-1">{notification.title}</h4>
+                    <span className="text-[8px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{notification.date}</span>
                   </div>
-                  <p className="text-text-secondary text-xs font-bold leading-relaxed line-clamp-2">{notice.description}</p>
+                  <p className="text-text-secondary text-xs font-bold leading-relaxed line-clamp-2">{notification.description}</p>
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-accent text-[9px] font-black uppercase tracking-widest group-hover:text-primary transition-colors">
-                      <Eye size={12} /> Leer Comunicado Completo
+                      <Eye size={12} /> Leer Notificación Completa
                     </div>
                   </div>
                 </div>
@@ -276,7 +276,7 @@ const ExecutiveSummary: React.FC = () => {
                 <div className="size-20 bg-surface-subtle rounded-full flex items-center justify-center">
                   <CheckCircle2 size={40} className="text-green-500" />
                 </div>
-                <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Bandeja de avisos al día</p>
+                <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Bandeja de notificaciones al día</p>
               </div>
             )}
           </div>
@@ -420,10 +420,10 @@ const ExecutiveSummary: React.FC = () => {
         </div>
       )}
 
-      {selectedNotice && (
+      {selectedNotification && (
         <NoticeModal 
-          notice={selectedNotice} 
-          onClose={handleCloseNotice} 
+          notice={selectedNotification} 
+          onClose={handleCloseNotification} 
         />
       )}
     </div>

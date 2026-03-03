@@ -1,5 +1,5 @@
 
-import { Asset, Transaction, Report, User, CorporateNotice, AdminNotification } from './types';
+import { Asset, Transaction, Report, User, CorporateNotification, AdminNotification } from './types';
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
@@ -84,7 +84,7 @@ export const MOCK_USER: User = {
   avatarUrl: "https://picsum.photos/seed/admin/200/200"
 };
 
-export const MOCK_NOTICES: CorporateNotice[] = [
+export const MOCK_NOTIFICATIONS: CorporateNotification[] = [
   {
     id: 'n-jan26-payout',
     title: 'Cierre de Periodo Enero 2026',
