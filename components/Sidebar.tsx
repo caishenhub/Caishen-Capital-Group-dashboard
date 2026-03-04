@@ -70,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   return (
     <aside className={`
-      fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 bg-white border-r border-surface-border flex flex-col transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+      fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 bg-white border-r border-surface-border flex flex-col transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 pt-safe
       ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
     `}>
       <div className="p-6 md:p-8 flex justify-between items-center">
@@ -78,8 +78,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <h1 className="text-accent text-sm md:text-base font-black tracking-tighter uppercase leading-tight">
           Caishen Capital Group
         </h1>
-        <button onClick={onClose} className="lg:hidden p-2 text-text-muted rounded-full hover:bg-gray-100">
-          <X size={24} />
+        <button onClick={onClose} className="lg:hidden p-3 -mr-2 text-text-muted rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors" title="Cerrar menú">
+          <X size={28} />
         </button>
       </div>
 

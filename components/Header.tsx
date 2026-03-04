@@ -55,10 +55,10 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
         <div className="flex items-center gap-3 md:gap-6">
           <button 
             onClick={onOpenMenu}
-            className="lg:hidden p-2 -ml-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden p-3 -ml-3 text-text-muted hover:bg-gray-100 rounded-xl transition-colors"
             title="Abrir menú"
           >
-            <Menu size={20} className="md:size-6" />
+            <Menu size={24} />
           </button>
 
           <div className="flex flex-col leading-tight">
