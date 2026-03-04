@@ -73,14 +73,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 bg-white border-r border-surface-border flex flex-col transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 pt-safe
       ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
     `}>
-      <div className="p-6 md:p-8 flex justify-between items-center">
-        {/* BRANDING ACTUALIZADO: CAISHEN CAPITAL GROUP */}
-        <h1 className="text-accent text-sm md:text-base font-black tracking-tighter uppercase leading-tight">
-          Caishen Capital Group
-        </h1>
-        <button onClick={onClose} className="lg:hidden p-3 -mr-2 text-text-muted rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors" title="Cerrar menú">
-          <X size={28} />
-        </button>
+      <div className="p-6 md:p-8 flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://i.ibb.co/LzqxpgRh/cropped-CAISHEN-22-300x300.png" 
+              alt="Logo" 
+              className="size-8 md:size-10 object-contain"
+            />
+            <h1 className="text-accent text-xs md:text-sm font-black tracking-tighter uppercase leading-tight">
+              Caishen Capital<br/>Group
+            </h1>
+          </div>
+          <button onClick={onClose} className="lg:hidden p-3 -mr-2 text-text-muted rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors" title="Cerrar menú">
+            <X size={28} />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 px-3 md:px-4 space-y-1 overflow-y-auto hide-scrollbar">
