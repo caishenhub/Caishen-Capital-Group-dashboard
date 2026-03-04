@@ -4,33 +4,40 @@ import { FINANCIAL_HISTORY, getStoredYield } from '../../constants';
 
 interface EvolutionChartProps {
   year: number;
+  dynamicHistory?: Record<number, number[]>;
 }
 
 const MONTH_NAMES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
-const EvolutionChart: React.FC<EvolutionChartProps> = ({ year }) => {
+const EvolutionChart: React.FC<EvolutionChartProps> = ({ year, dynamicHistory }) => {
   
+  const historyToUse = dynamicHistory || FINANCIAL_HISTORY;
+
   const baseValue = useMemo(() => {
     if (year === 2026) {
-      const yields2025 = FINANCIAL_HISTORY[2025] || [];
+      const yields2025 = historyToUse[2025] || [];
       let closingValue = 100;
       yields2025.forEach((_, idx) => {
-        const y = getStoredYield(2025, idx);
+        const y = (localStorage.getItem(`YIELD_2025_${idx}`)) 
+          ? parseFloat(localStorage.getItem(`YIELD_2025_${idx}`)!) 
+          : (yields2025[idx] / 100);
         closingValue = closingValue * (1 + y);
       });
       return closingValue;
     }
     return 100;
-  }, [year]);
+  }, [year, historyToUse]);
 
   const chartData = useMemo(() => {
     let cumulativeValue = baseValue;
     const data = [];
     
     for (let i = 0; i < 12; i++) {
-      const y = getStoredYield(year, i);
+      const stored = localStorage.getItem(`YIELD_${year}_${i}`);
+      const y = stored ? parseFloat(stored) : (historyToUse[year] ? historyToUse[year][i] / 100 : 0);
+      
       // Para 2026 solo mostramos meses con datos (y != 0)
-      const hasData = year !== 2026 || (y !== 0 || localStorage.getItem(`YIELD_${year}_${i}`) !== null);
+      const hasData = year !== 2026 || (y !== 0 || stored !== null);
       
       if (hasData) {
         cumulativeValue = cumulativeValue * (1 + y);
@@ -43,7 +50,7 @@ const EvolutionChart: React.FC<EvolutionChartProps> = ({ year }) => {
     }
     
     return data;
-  }, [year, baseValue]);
+  }, [year, baseValue, historyToUse]);
 
   return (
     <div className="h-72 w-full">

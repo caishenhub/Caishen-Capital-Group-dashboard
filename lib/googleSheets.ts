@@ -241,6 +241,30 @@ export async function fetchStrategicReport(ignoreCache = false): Promise<Strateg
     .sort((a, b) => a.order - b.order);
 }
 
+export interface FinancialHistoryRecord {
+  year: number;
+  month: number;
+  yield: number;
+}
+
+export async function fetchFinancialHistory(ignoreCache = false): Promise<Record<number, number[]>> {
+  const data = await fetchTableData('HISTORIAL_RENDIMIENTOS', ignoreCache);
+  const history: Record<number, number[]> = {};
+  
+  data.forEach(row => {
+    const year = parseSheetNumber(findValue(row, ['ANIO', 'year', 'anio']));
+    const month = parseSheetNumber(findValue(row, ['MES', 'month', 'mes'])); // 1-12
+    const yieldVal = parseSheetNumber(findValue(row, ['RENDIMIENTO', 'yield', 'rendimiento']));
+    
+    if (year > 0 && month >= 1 && month <= 12) {
+      if (!history[year]) history[year] = Array(12).fill(0);
+      history[year][month - 1] = yieldVal;
+    }
+  });
+  
+  return history;
+}
+
 export async function fetchExecutiveKpis(ignoreCache = false): Promise<Record<string, ExecutiveKpi>> {
   const data = await fetchTableData('RESUMEN_KPI', ignoreCache);
   const kpis: Record<string, ExecutiveKpi> = {};
@@ -277,11 +301,8 @@ export async function fetchNotifications(ignoreCache = false): Promise<Corporate
   const data = await fetchTableData('NOTIFICACIONES', ignoreCache);
   return data
     .filter(row => {
-      const id = String(findValue(row, ['ID', 'id']) || '').trim();
-      const title = String(findValue(row, ['TITULO', 'title', 'titulo']) || '').trim();
-      // Solo incluimos si tiene título y el ID no es 'ARCHIVADO'
-      // También ignoramos filas completamente vacías (donde el título es "")
-      return id.toUpperCase() !== 'ARCHIVADO' && title !== '';
+      const id = String(findValue(row, ['ID', 'id']) || '');
+      return id.toUpperCase() !== 'ARCHIVADO';
     })
     .map((row, idx) => {
       const rawDate = findValue(row, ['FECHA', 'date', 'fecha']);

@@ -114,7 +114,7 @@ const Portfolio: React.FC = () => {
                 </div>
               </div>
               <h4 className="text-3xl md:text-5xl font-black tracking-tighter mb-2 text-[#1d1c2d] break-words">
-                {kpi.value}
+                {kpi.value}{isExposicion && !kpi.value.includes('%') ? '%' : ''}
               </h4>
               <p className="text-[10px] md:text-[12px] font-black text-[#6b7280] uppercase tracking-[0.15em] line-clamp-2">{displaySub}</p>
             </div>
