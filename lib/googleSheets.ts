@@ -148,10 +148,9 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   if (!ignoreCache) {
     if (prefetchCache[tabName]) {
-      const cached = prefetchCache[tabName];
-      if (Date.now() - cached.timestamp < CACHE_DURATION) return cached.data;
+      return prefetchCache[tabName].data;
     }
-    if (localCached && (Date.now() - localCached.timestamp < CACHE_DURATION)) {
+    if (localCached) {
       prefetchCache[tabName] = localCached;
       return localCached.data;
     }
@@ -504,8 +503,8 @@ export async function fetchPortfolioStructure(ignoreCache = false): Promise<Port
   }));
 }
 
-export async function fetchPortfolioKpis(): Promise<PortfolioKpi[]> {
-  const data = await fetchTableData('KPI_PORTAFOLIO');
+export async function fetchPortfolioKpis(ignoreCache = false): Promise<PortfolioKpi[]> {
+  const data = await fetchTableData('KPI_PORTAFOLIO', ignoreCache);
   return data.map(item => ({
     label: String(findValue(item, ['ETIQUETA', 'label', 'titulo']) || ''),
     value: String(findValue(item, ['VALOR', 'value', 'dato']) || '---'),
@@ -588,6 +587,6 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
 };
 
 export const warmUpCache = async () => {
-  const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO', 'KPI_PORTAFOLIO', 'ESTRUCTURA_PORTAFOLIO', 'LIBRO_ACCIONISTAS'];
+  const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO', 'KPI_PORTAFOLIO', 'ESTRUCTURA_PORTAFOLIO', 'LIBRO_ACCIONISTAS', 'NOTIFICACIONES', 'REPORTES_ADMIN'];
   return Promise.allSettled(tabs.map(tab => fetchTableData(tab)));
 };

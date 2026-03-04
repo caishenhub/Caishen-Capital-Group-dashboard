@@ -30,16 +30,18 @@ const UserManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (ignoreCache = false) => {
+    if (!ignoreCache && users.length === 0) setIsLoading(true);
     setFetchError(null);
     try {
-      // Forzamos sincronización real con la nube pasando ignoreCache=true
-      const data = await fetchTableData('LIBRO_ACCIONISTAS', true);
+      // Usamos el patrón de caché para velocidad, con refresco opcional
+      const data = await fetchTableData('LIBRO_ACCIONISTAS', ignoreCache);
       
       if (!data || data.length === 0) {
-        setFetchError("El registro en la nube está vacío o no es accesible.");
-        setUsers([]);
+        if (!ignoreCache) {
+           setFetchError("El registro en la nube está vacío o no es accesible.");
+           setUsers([]);
+        }
         return;
       }
 
@@ -81,8 +83,13 @@ const UserManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 120000);
+    // Carga inicial rápida (usa caché)
+    loadData(false).then(() => {
+      // Refresco silencioso (ignora caché)
+      setTimeout(() => loadData(true), 1000);
+    });
+    
+    const interval = setInterval(() => loadData(true), 120000);
     return () => clearInterval(interval);
   }, []);
 
@@ -178,7 +185,7 @@ const UserManagement: React.FC = () => {
           </button>
           
           <button 
-            onClick={loadData}
+            onClick={() => loadData(true)}
             disabled={isLoading}
             className="flex items-center gap-3 px-8 py-3.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
           >
@@ -200,7 +207,7 @@ const UserManagement: React.FC = () => {
             <h4 className="text-red-900 font-black uppercase text-xs tracking-widest">Error de Sincronización</h4>
             <p className="text-red-700 text-sm font-medium">{fetchError}</p>
           </div>
-          <button onClick={loadData} className="ml-auto px-4 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Reintentar</button>
+          <button onClick={() => loadData(true)} className="ml-auto px-4 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Reintentar</button>
         </div>
       )}
 

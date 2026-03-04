@@ -31,12 +31,13 @@ const Portfolio: React.FC = () => {
   const [globalAum, setGlobalAum] = useState(0);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
 
-  const loadPortfolioMetadata = async () => {
+  const loadPortfolioMetadata = async (ignoreCache = false) => {
+    if (!ignoreCache && portfolioData.length === 0) setIsLoadingMetadata(true);
     try {
       const [pData, kpiData, configData] = await Promise.all([
-        fetchPortfolioStructure(),
-        fetchPortfolioKpis(),
-        fetchTableData('CONFIG_MAESTRA')
+        fetchPortfolioStructure(ignoreCache),
+        fetchPortfolioKpis(ignoreCache),
+        fetchTableData('CONFIG_MAESTRA', ignoreCache)
       ]);
       setPortfolioData(pData);
       setKpis(kpiData);
@@ -51,8 +52,13 @@ const Portfolio: React.FC = () => {
   };
 
   useEffect(() => {
-    loadPortfolioMetadata();
-    const interval = setInterval(loadPortfolioMetadata, 120000);
+    // Carga inicial rápida
+    loadPortfolioMetadata(false).then(() => {
+      // Refresco silencioso
+      setTimeout(() => loadPortfolioMetadata(true), 1000);
+    });
+    
+    const interval = setInterval(() => loadPortfolioMetadata(true), 120000);
     return () => clearInterval(interval);
   }, []);
 

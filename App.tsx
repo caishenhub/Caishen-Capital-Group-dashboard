@@ -14,7 +14,7 @@ import AuthGate from './components/Auth/AuthGate';
 import MobileNav from './components/MobileNav';
 import { Cloud, CloudOff, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { GOOGLE_CONFIG } from './constants';
-import { checkConnection } from './lib/googleSheets';
+import { checkConnection, warmUpCache } from './lib/googleSheets';
 
 const MissingUrlAlert = () => (
   <div className="fixed inset-0 z-[10000] bg-accent flex items-center justify-center p-6 text-center">
@@ -110,6 +110,12 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
 
 const App: React.FC = () => {
   const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20;
+
+  useEffect(() => {
+    if (!isConfigMissing) {
+      warmUpCache();
+    }
+  }, [isConfigMissing]);
 
   if (isConfigMissing) {
     return <MissingUrlAlert />;

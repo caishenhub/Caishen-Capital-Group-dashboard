@@ -68,7 +68,7 @@ const ExecutiveSummary: React.FC = () => {
   };
 
   const loadData = async (ignoreCache = false) => {
-    if (!ignoreCache) setIsLoading(true);
+    if (!ignoreCache && Object.keys(liveKpis).length === 0) setIsLoading(true);
     
     try {
       const [reportData, kpiData, notificationsData, liquidityData, configData] = await Promise.all([
@@ -96,7 +96,14 @@ const ExecutiveSummary: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
+    // Carga inicial (usa caché si existe)
+    loadData(false).then(() => {
+      // Refresco en segundo plano (ignora caché)
+      setTimeout(() => loadData(true), 1000);
+    });
+    
+    const interval = setInterval(() => loadData(true), 120000);
+    return () => clearInterval(interval);
   }, []);
 
   const formatKpiValue = (kpi: ExecutiveKpi | undefined) => {

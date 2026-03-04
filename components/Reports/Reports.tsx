@@ -22,7 +22,7 @@ const Reports: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadReports = async (ignoreCache = false) => {
-    setIsLoading(true);
+    if (!ignoreCache && allReports.length === 0) setIsLoading(true);
     try {
       const data = await fetchReportsAdmin(ignoreCache);
       setAllReports(data);
@@ -34,7 +34,14 @@ const Reports: React.FC = () => {
   };
 
   useEffect(() => {
-    loadReports(false);
+    // Carga inicial rápida
+    loadReports(false).then(() => {
+      // Refresco silencioso
+      setTimeout(() => loadReports(true), 1000);
+    });
+    
+    const interval = setInterval(() => loadReports(true), 120000);
+    return () => clearInterval(interval);
   }, []);
 
   const filteredReports = allReports.filter(report => {
