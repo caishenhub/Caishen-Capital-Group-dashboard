@@ -275,18 +275,26 @@ export async function fetchLiquidityProtocol(ignoreCache = false): Promise<Liqui
 
 export async function fetchNotifications(ignoreCache = false): Promise<CorporateNotification[]> {
   const data = await fetchTableData('NOTIFICACIONES', ignoreCache);
-  return data.map((row, idx) => {
-    const rawDate = findValue(row, ['FECHA', 'date', 'fecha']);
-    return {
-      id: String(findValue(row, ['ID', 'id']) || `notice-${idx}`),
-      title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Notificación Corporativa'),
-      date: formatSheetDate(rawDate), 
-      description: String(findValue(row, ['DESCRIPCION', 'description', 'descripcion']) || ''),
-      type: (findValue(row, ['TIPO', 'type', 'tipo']) || 'Info') as any,
-      fullContent: String(findValue(row, ['CONTENIDO', 'content', 'contenido']) || ''),
-      imageUrl: String(findValue(row, ['IMAGEN', 'image', 'imagen', 'image_url']) || '')
-    };
-  }).reverse();
+  return data
+    .filter(row => {
+      const id = String(findValue(row, ['ID', 'id']) || '').trim();
+      const title = String(findValue(row, ['TITULO', 'title', 'titulo']) || '').trim();
+      // Solo incluimos si tiene título y el ID no es 'ARCHIVADO'
+      // También ignoramos filas completamente vacías (donde el título es "")
+      return id.toUpperCase() !== 'ARCHIVADO' && title !== '';
+    })
+    .map((row, idx) => {
+      const rawDate = findValue(row, ['FECHA', 'date', 'fecha']);
+      return {
+        id: String(findValue(row, ['ID', 'id']) || `notice-${idx}`),
+        title: String(findValue(row, ['TITULO', 'title', 'titulo']) || 'Notificación Corporativa'),
+        date: formatSheetDate(rawDate), 
+        description: String(findValue(row, ['DESCRIPCION', 'description', 'descripcion']) || ''),
+        type: (findValue(row, ['TIPO', 'type', 'tipo']) || 'Info') as any,
+        fullContent: String(findValue(row, ['CONTENIDO', 'content', 'contenido']) || ''),
+        imageUrl: String(findValue(row, ['IMAGEN', 'image', 'imagen', 'image_url']) || '')
+      };
+    }).reverse();
 }
 
 export async function publishNotification(notice: Partial<CorporateNotification>): Promise<{success: boolean}> {

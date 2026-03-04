@@ -106,8 +106,8 @@ const ExecutiveSummary: React.FC = () => {
     return kpi.valor || '---';
   };
 
-  const pendingNotifications = useMemo(() => {
-    return liveNotifications.filter(n => !readNotificationIds.includes(n.id));
+  const unreadCount = useMemo(() => {
+    return liveNotifications.filter(n => !readNotificationIds.includes(n.id)).length;
   }, [liveNotifications, readNotificationIds]);
 
   const markAsRead = (id: string) => {
@@ -242,41 +242,57 @@ const ExecutiveSummary: React.FC = () => {
           <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 shrink-0">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Bell size={28} className={pendingNotifications.length > 0 ? 'text-accent animate-bounce' : 'text-text-muted opacity-30'} />
-                {pendingNotifications.length > 0 && (
+                <Bell size={28} className={unreadCount > 0 ? 'text-accent animate-bounce' : 'text-text-muted opacity-30'} />
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 size-3.5 bg-primary rounded-full border-2 border-white shadow-neon"></span>
                 )}
               </div>
-              <h3 className="text-accent text-xl font-black uppercase tracking-widest">Notificaciones Pendientes ({pendingNotifications.length})</h3>
+              <h3 className="text-accent text-xl font-black uppercase tracking-widest">Notificaciones Corporativas ({liveNotifications.length})</h3>
             </div>
           </header>
 
           <div className="flex-1 overflow-y-auto space-y-6 hide-scrollbar">
-            {pendingNotifications.length > 0 ? (
-              pendingNotifications.map((notification) => (
-                <div 
-                  key={notification.id} 
-                  onClick={() => handleNotificationClick(notification)}
-                  className="bg-surface-subtle/30 rounded-[40px] p-6 md:p-8 border border-surface-border transition-all hover:bg-white hover:shadow-premium hover:-translate-y-1 cursor-pointer group animate-in slide-in-from-right duration-500"
-                >
-                  <div className="flex justify-between items-start gap-4 mb-4">
-                    <h4 className="text-accent text-base font-black uppercase line-clamp-1">{notification.title}</h4>
-                    <span className="text-[8px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{notification.date}</span>
-                  </div>
-                  <p className="text-text-secondary text-xs font-bold leading-relaxed line-clamp-2">{notification.description}</p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-accent text-[9px] font-black uppercase tracking-widest group-hover:text-primary transition-colors">
-                      <Eye size={12} /> Leer Notificación Completa
+            {liveNotifications.length > 0 ? (
+              liveNotifications.map((notification) => {
+                const isRead = readNotificationIds.includes(notification.id);
+                return (
+                  <div 
+                    key={notification.id} 
+                    onClick={() => handleNotificationClick(notification)}
+                    className={`rounded-[40px] p-6 md:p-8 border transition-all hover:shadow-premium hover:-translate-y-1 cursor-pointer group animate-in slide-in-from-right duration-500 ${
+                      isRead 
+                        ? 'bg-surface-subtle/10 border-surface-border/50 opacity-60' 
+                        : 'bg-surface-subtle/30 border-surface-border hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        {!isRead && <span className="size-2 bg-primary rounded-full shadow-neon animate-pulse"></span>}
+                        <h4 className={`text-base font-black uppercase line-clamp-1 ${isRead ? 'text-text-muted' : 'text-accent'}`}>
+                          {notification.title}
+                        </h4>
+                      </div>
+                      <span className="text-[8px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{notification.date}</span>
+                    </div>
+                    <p className={`text-xs font-bold leading-relaxed line-clamp-2 ${isRead ? 'text-text-muted/70' : 'text-text-secondary'}`}>
+                      {notification.description}
+                    </p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-colors ${
+                        isRead ? 'text-text-muted' : 'text-accent group-hover:text-primary'
+                      }`}>
+                        <Eye size={12} /> {isRead ? 'Volver a leer' : 'Leer Notificación Completa'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 opacity-40">
                 <div className="size-20 bg-surface-subtle rounded-full flex items-center justify-center">
                   <CheckCircle2 size={40} className="text-green-500" />
                 </div>
-                <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Bandeja de notificaciones al día</p>
+                <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">No hay notificaciones activas</p>
               </div>
             )}
           </div>
