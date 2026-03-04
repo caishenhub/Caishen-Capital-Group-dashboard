@@ -21,8 +21,7 @@ import AssetDistributionDonut from './AssetDistributionDonut';
 import NoticeModal from './NoticeModal';
 import { CorporateNotification } from '../../types';
 import DetailedOperationalReport from '../Portfolio/DetailedOperationalReport';
-import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, fetchFinancialHistory, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem } from '../../lib/googleSheets';
-import EvolutionChart from './EvolutionChart';
+import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem } from '../../lib/googleSheets';
 
 interface KpiDetail {
   id: string;
@@ -47,7 +46,6 @@ const ExecutiveSummary: React.FC = () => {
   const [liveKpis, setLiveKpis] = useState<Record<string, ExecutiveKpi>>({});
   const [liveLiquidity, setLiveLiquidity] = useState<LiquidityItem[]>([]);
   const [liveNotifications, setLiveNotifications] = useState<CorporateNotification[]>([]);
-  const [financialHistory, setFinancialHistory] = useState<Record<number, number[]>>({});
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('ccg_read_notices');
     return saved ? JSON.parse(saved) : [];
@@ -73,13 +71,12 @@ const ExecutiveSummary: React.FC = () => {
     if (!ignoreCache) setIsLoading(true);
     
     try {
-      const [reportData, kpiData, notificationsData, liquidityData, configData, historyData] = await Promise.all([
+      const [reportData, kpiData, notificationsData, liquidityData, configData] = await Promise.all([
         fetchStrategicReport(ignoreCache),
         fetchExecutiveKpis(ignoreCache),
         fetchNotifications(ignoreCache),
         fetchLiquidityProtocol(ignoreCache),
-        fetchTableData('CONFIG_MAESTRA', ignoreCache),
-        fetchFinancialHistory(ignoreCache)
+        fetchTableData('CONFIG_MAESTRA', ignoreCache)
       ]);
       
       const previewBlock = reportData.find(s => s.tipo === 'PREVIEW') || reportData[0];
@@ -87,7 +84,6 @@ const ExecutiveSummary: React.FC = () => {
       setLiveKpis(kpiData);
       setLiveNotifications(notificationsData);
       setLiveLiquidity(liquidityData);
-      setFinancialHistory(historyData);
 
       const aumRaw = findValue(configData[0], ['AUM_TOTAL_FONDO', 'total_aum', 'aum']);
       setMasterAum(formatCurrency(aumRaw));
@@ -242,16 +238,6 @@ const ExecutiveSummary: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-[50px] p-8 md:p-12 border border-surface-border shadow-premium flex flex-col min-h-[500px]">
-          <header className="mb-10">
-            <h3 className="text-accent text-xl font-black uppercase tracking-widest">Evolución del Portafolio</h3>
-            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-1">Crecimiento acumulado CCG Index</p>
-          </header>
-          <div className="flex-1 flex items-center">
-            <EvolutionChart year={2026} dynamicHistory={financialHistory} />
-          </div>
-        </div>
-
         <div id="seccion-notificaciones" className="bg-white rounded-[50px] p-8 md:p-12 border border-surface-border shadow-premium flex flex-col min-h-[500px] relative overflow-hidden">
           <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 shrink-0">
             <div className="flex items-center gap-4">

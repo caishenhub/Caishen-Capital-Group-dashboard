@@ -73,6 +73,7 @@ const PROFILE_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL;
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
 const inFlightRequests: Record<string, Promise<any[]>> = {};
 const CACHE_DURATION = 1000 * 60 * 10; // 10 minutes
+const MAX_RETRIES = 2;
 
 // Helper to safely read from localStorage
 const getLocalCache = (tabName: string) => {
@@ -80,9 +81,8 @@ const getLocalCache = (tabName: string) => {
     const cached = localStorage.getItem(`ccg_cache_${tabName}`);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (Date.now() - parsed.timestamp < CACHE_DURATION) {
-        return parsed;
-      }
+      // Si hay error de red, permitimos usar caché aunque haya expirado un poco
+      return parsed;
     }
   } catch (e) {
     // Ignore localStorage errors
@@ -144,13 +144,14 @@ export async function checkConnection(): Promise<boolean> {
 export async function fetchTableData(tabName: string, ignoreCache = false): Promise<any[]> {
   if (!PROFILE_API_URL) return [];
 
+  const localCached = getLocalCache(tabName);
+
   if (!ignoreCache) {
     if (prefetchCache[tabName]) {
       const cached = prefetchCache[tabName];
       if (Date.now() - cached.timestamp < CACHE_DURATION) return cached.data;
     }
-    const localCached = getLocalCache(tabName);
-    if (localCached) {
+    if (localCached && (Date.now() - localCached.timestamp < CACHE_DURATION)) {
       prefetchCache[tabName] = localCached;
       return localCached.data;
     }
@@ -158,14 +159,15 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
 
-  const fetchPromise = (async () => {
+  const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&t=${Date.now()}`;
+      // Usamos un timestamp simple para evitar caché agresivo del navegador
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 30000)}`;
+      
       const response = await fetch(url, { 
         method: 'GET', 
         mode: 'cors', 
-        redirect: 'follow',
-        cache: 'no-store'
+        redirect: 'follow'
       });
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
@@ -174,7 +176,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
       
       if (json.error) {
         console.warn(`API Error in ${tabName}:`, json.error);
-        return [];
+        return localCached?.data || [];
       }
 
       const rows = Array.isArray(json) ? json : (json.rows || []);
@@ -189,14 +191,25 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
       setLocalCache(tabName, processedData);
       return processedData;
     } catch (err) {
-      console.error(`Fetch error for ${tabName}:`, err);
-      return prefetchCache[tabName]?.data || [];
-    } finally {
-      delete inFlightRequests[tabName];
+      if (attempt < MAX_RETRIES) {
+        // Espera exponencial corta antes de reintentar
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        return fetchWithRetry(attempt + 1);
+      }
+      console.error(`Fetch error for ${tabName} after ${MAX_RETRIES} retries:`, err);
+      // Fallback crítico: si falla todo, devolvemos lo que tengamos en caché local aunque sea viejo
+      return localCached?.data || [];
     }
-  })();
+  };
 
+  const fetchPromise = fetchWithRetry();
   inFlightRequests[tabName] = fetchPromise;
+  
+  // Limpieza de la promesa en vuelo después de terminar
+  fetchPromise.finally(() => {
+    delete inFlightRequests[tabName];
+  });
+
   return fetchPromise;
 }
 
