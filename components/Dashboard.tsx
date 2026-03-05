@@ -4,7 +4,14 @@ import { Wallet, PiggyBank, ShieldCheck, Activity, Target, RefreshCw } from 'luc
 import StatCard from './StatCard';
 import PerformanceChart from './Charts/PerformanceChart';
 import AllocationPieChart from './Charts/AllocationPieChart';
-import { fetchTableData, findValue, parseSheetNumber, fetchPortfolioStructure, PortfolioCategory } from '../lib/googleSheets';
+import { 
+  fetchTableData, 
+  findValue, 
+  parseSheetNumber, 
+  fetchPortfolioStructure, 
+  PortfolioCategory,
+  DATA_UPDATED_EVENT 
+} from '../lib/googleSheets';
 
 const DashboardSkeleton: React.FC = () => {
   return (
@@ -85,13 +92,24 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     // Load cached data first for instant render
-    loadConfigs(false, false).then(() => {
-      // Then fetch fresh data in the background
-      setTimeout(() => loadConfigs(true, true), 1000);
-    });
+    loadConfigs(false, false);
     
-    const interval = setInterval(() => loadConfigs(true, true), 120000);
-    return () => clearInterval(interval);
+    // Listen for background updates
+    const handleDataUpdate = (e: any) => {
+      const { tabName } = e.detail;
+      const relevantTabs = ['CONFIG_MAESTRA', 'LIBRO_ACCIONISTAS', 'HISTORIAL_RENDIMIENTOS', 'ESTRUCTURA_PORTAFOLIO'];
+      if (relevantTabs.includes(tabName)) {
+        loadConfigs(true, false);
+      }
+    };
+
+    window.addEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+    const interval = setInterval(() => loadConfigs(true, true), 300000); // 5 minutes refresh
+    
+    return () => {
+      window.removeEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const activeConfig = useMemo(() => {

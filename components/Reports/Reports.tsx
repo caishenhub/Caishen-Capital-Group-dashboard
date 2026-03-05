@@ -4,7 +4,7 @@ import { ChevronDown, Search, RefreshCw, FileText } from 'lucide-react';
 import ReportCard from './ReportCard';
 import ReportModal from './ReportModal';
 import { Report } from '../../types';
-import { fetchReportsAdmin, norm } from '../../lib/googleSheets';
+import { fetchReportsAdmin, norm, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
 
 const FILTERS = [
   'Todos',
@@ -35,13 +35,23 @@ const Reports: React.FC = () => {
 
   useEffect(() => {
     // Carga inicial rápida
-    loadReports(false).then(() => {
-      // Refresco silencioso
-      setTimeout(() => loadReports(true), 1000);
-    });
+    loadReports(false);
     
-    const interval = setInterval(() => loadReports(true), 120000);
-    return () => clearInterval(interval);
+    // Listen for background updates
+    const handleDataUpdate = (e: any) => {
+      const { tabName } = e.detail;
+      if (tabName === 'REPORTES_ADMIN') {
+        loadReports(false);
+      }
+    };
+
+    window.addEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+    const interval = setInterval(() => loadReports(true), 300000);
+    
+    return () => {
+      window.removeEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredReports = allReports.filter(report => {

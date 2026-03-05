@@ -21,7 +21,7 @@ import AssetDistributionDonut from './AssetDistributionDonut';
 import NoticeModal from './NoticeModal';
 import { CorporateNotification } from '../../types';
 import DetailedOperationalReport from '../Portfolio/DetailedOperationalReport';
-import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem } from '../../lib/googleSheets';
+import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
 
 interface KpiDetail {
   id: string;
@@ -97,13 +97,24 @@ const ExecutiveSummary: React.FC = () => {
 
   useEffect(() => {
     // Carga inicial (usa caché si existe)
-    loadData(false).then(() => {
-      // Refresco en segundo plano (ignora caché)
-      setTimeout(() => loadData(true), 1000);
-    });
+    loadData(false);
     
-    const interval = setInterval(() => loadData(true), 120000);
-    return () => clearInterval(interval);
+    // Listen for background updates
+    const handleDataUpdate = (e: any) => {
+      const { tabName } = e.detail;
+      const relevantTabs = ['REPORTE_ESTRATEGICO', 'RESUMEN_KPI', 'NOTIFICACIONES', 'PROTOCOLO_LIQUIDEZ', 'CONFIG_MAESTRA'];
+      if (relevantTabs.includes(tabName)) {
+        loadData(false);
+      }
+    };
+
+    window.addEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+    const interval = setInterval(() => loadData(true), 300000);
+    
+    return () => {
+      window.removeEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const formatKpiValue = (kpi: ExecutiveKpi | undefined) => {

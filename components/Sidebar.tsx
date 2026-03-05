@@ -26,11 +26,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   // --- OPTIMIZACIÓN: SISTEMA DE PRE-CARGA POR HOVER ---
   const handlePrefetch = (path: string) => {
+    // Always warm up the most critical data
+    fetchTableData('CONFIG_MAESTRA');
+    
     switch (path) {
       case '/':
-        fetchTableData('CONFIG_MAESTRA');
         fetchTableData('HISTORIAL_RENDIMIENTOS');
         fetchTableData('ESTRUCTURA_PORTAFOLIO');
+        fetchTableData('LIBRO_ACCIONISTAS');
         break;
       case '/portfolio':
         fetchTableData('KPI_PORTAFOLIO');
@@ -39,14 +42,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         break;
       case '/users':
         fetchTableData('LIBRO_ACCIONISTAS');
+        fetchTableData('DATOS_PAGO_SOCIOS');
         break;
       case '/summary':
         fetchTableData('RESUMEN_KPI');
         fetchTableData('NOTIFICACIONES');
         fetchTableData('PROTOCOLO_LIQUIDEZ');
+        fetchTableData('REPORTE_ESTRATEGICO');
         break;
       case '/reports':
         fetchTableData('REPORTES_ADMIN');
+        break;
+      case '/support':
+        // No specific data for support yet
         break;
       default:
         warmUpCache();

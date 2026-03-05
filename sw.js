@@ -32,12 +32,30 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+  const isGoogleScript = url.hostname === 'script.google.com' || url.hostname === 'script.googleusercontent.com';
+
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
+      // For Google Scripts, we prefer network but fallback to cache
+      if (isGoogleScript) {
+        return fetch(event.request).then(response => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        }).catch(() => {
+          return cachedResponse || new Response(JSON.stringify({ error: 'Offline' }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        });
+      }
+
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then(response => {
-        if (event.request.url.includes('i.ibb.co')) {
+        if (event.request.url.includes('i.ibb.co') || event.request.url.includes('fonts.googleapis.com')) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseClone);

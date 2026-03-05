@@ -22,7 +22,8 @@ import {
   fetchPortfolioKpis, 
   fetchTableData,
   findValue,
-  parseSheetNumber
+  parseSheetNumber,
+  DATA_UPDATED_EVENT
 } from '../../lib/googleSheets';
 
 const Portfolio: React.FC = () => {
@@ -53,13 +54,24 @@ const Portfolio: React.FC = () => {
 
   useEffect(() => {
     // Carga inicial rápida
-    loadPortfolioMetadata(false).then(() => {
-      // Refresco silencioso
-      setTimeout(() => loadPortfolioMetadata(true), 1000);
-    });
+    loadPortfolioMetadata(false);
     
-    const interval = setInterval(() => loadPortfolioMetadata(true), 120000);
-    return () => clearInterval(interval);
+    // Listen for background updates
+    const handleDataUpdate = (e: any) => {
+      const { tabName } = e.detail;
+      const relevantTabs = ['ESTRUCTURA_PORTAFOLIO', 'KPI_PORTAFOLIO', 'CONFIG_MAESTRA'];
+      if (relevantTabs.includes(tabName)) {
+        loadPortfolioMetadata(false);
+      }
+    };
+
+    window.addEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+    const interval = setInterval(() => loadPortfolioMetadata(true), 300000);
+    
+    return () => {
+      window.removeEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const getKpiIcon = (type: string) => {

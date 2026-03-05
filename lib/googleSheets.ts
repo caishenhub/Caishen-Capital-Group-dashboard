@@ -72,17 +72,18 @@ const PROFILE_API_URL = GOOGLE_CONFIG.SCRIPT_API_URL;
 
 const prefetchCache: Record<string, { data: any[], timestamp: number }> = {};
 const inFlightRequests: Record<string, Promise<any[]>> = {};
-const CACHE_DURATION = 1000 * 60 * 10; // 10 minutes
-const MAX_RETRIES = 2;
+const CACHE_DURATION = 1000 * 60 * 60; // 1 hour for local cache persistence
+const MAX_RETRIES = 3;
+
+// Global event name for data updates
+export const DATA_UPDATED_EVENT = 'ccg_data_updated';
 
 // Helper to safely read from localStorage
 const getLocalCache = (tabName: string) => {
   try {
     const cached = localStorage.getItem(`ccg_cache_${tabName}`);
     if (cached) {
-      const parsed = JSON.parse(cached);
-      // Si hay error de red, permitimos usar caché aunque haya expirado un poco
-      return parsed;
+      return JSON.parse(cached);
     }
   } catch (e) {
     // Ignore localStorage errors
@@ -96,6 +97,9 @@ const setLocalCache = (tabName: string, data: any[]) => {
     const cacheData = { data, timestamp: Date.now() };
     localStorage.setItem(`ccg_cache_${tabName}`, JSON.stringify(cacheData));
     prefetchCache[tabName] = cacheData;
+    
+    // Dispatch event to notify components that data has been updated
+    window.dispatchEvent(new CustomEvent(DATA_UPDATED_EVENT, { detail: { tabName } }));
   } catch (e) {
     // Ignore localStorage errors
   }
@@ -146,22 +150,29 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   const localCached = getLocalCache(tabName);
 
-  if (!ignoreCache) {
-    if (prefetchCache[tabName]) {
-      return prefetchCache[tabName].data;
+  if (!ignoreCache && (prefetchCache[tabName] || localCached)) {
+    const data = prefetchCache[tabName]?.data || localCached.data;
+    const timestamp = prefetchCache[tabName]?.timestamp || localCached.timestamp || 0;
+    const isStale = Date.now() - timestamp > 1000 * 60 * 5;
+    
+    if (isStale || !prefetchCache[tabName]) {
+      fetchFromServer(tabName).catch(console.error);
     }
-    if (localCached) {
-      prefetchCache[tabName] = localCached;
-      return localCached.data;
-    }
+    return data;
   }
 
+  return fetchFromServer(tabName);
+}
+
+async function fetchFromServer(tabName: string): Promise<any[]> {
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
+
+  const localCached = getLocalCache(tabName);
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
       // Usamos un timestamp simple para evitar caché agresivo del navegador
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 30000)}`;
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
         method: 'GET', 
@@ -192,7 +203,7 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
     } catch (err) {
       if (attempt < MAX_RETRIES) {
         // Espera exponencial corta antes de reintentar
-        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         return fetchWithRetry(attempt + 1);
       }
       console.error(`Fetch error for ${tabName} after ${MAX_RETRIES} retries:`, err);
@@ -587,6 +598,28 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
 };
 
 export const warmUpCache = async () => {
-  const tabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'RESUMEN_KPI', 'PROTOCOLO_LIQUIDEZ', 'REPORTE_ESTRATEGICO', 'KPI_PORTAFOLIO', 'ESTRUCTURA_PORTAFOLIO', 'LIBRO_ACCIONISTAS', 'NOTIFICACIONES', 'REPORTES_ADMIN'];
-  return Promise.allSettled(tabs.map(tab => fetchTableData(tab)));
+  const tabs = [
+    'CONFIG_MAESTRA', 
+    'HISTORIAL_RENDIMIENTOS', 
+    'RESUMEN_KPI', 
+    'PROTOCOLO_LIQUIDEZ', 
+    'REPORTE_ESTRATEGICO', 
+    'KPI_PORTAFOLIO', 
+    'ESTRUCTURA_PORTAFOLIO', 
+    'LIBRO_ACCIONISTAS', 
+    'NOTIFICACIONES', 
+    'REPORTES_ADMIN',
+    'DATOS_PAGO_SOCIOS'
+  ];
+  
+  // Ejecutamos en paralelo pero con un pequeño delay entre grupos para no saturar
+  const chunks = [];
+  for (let i = 0; i < tabs.length; i += 3) {
+    chunks.push(tabs.slice(i, i + 3));
+  }
+
+  for (const chunk of chunks) {
+    await Promise.allSettled(chunk.map(tab => fetchTableData(tab)));
+    await new Promise(r => setTimeout(r, 100)); // Pequeño respiro
+  }
 };

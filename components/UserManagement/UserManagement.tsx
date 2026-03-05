@@ -15,7 +15,7 @@ import {
   Database
 } from 'lucide-react';
 import ShareholderProfile from './ShareholderProfile';
-import { fetchTableData, findValue, parseSheetNumber } from '../../lib/googleSheets';
+import { fetchTableData, findValue, parseSheetNumber, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
 
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,13 +84,23 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     // Carga inicial rápida (usa caché)
-    loadData(false).then(() => {
-      // Refresco silencioso (ignora caché)
-      setTimeout(() => loadData(true), 1000);
-    });
+    loadData(false);
     
-    const interval = setInterval(() => loadData(true), 120000);
-    return () => clearInterval(interval);
+    // Listen for background updates
+    const handleDataUpdate = (e: any) => {
+      const { tabName } = e.detail;
+      if (tabName === 'LIBRO_ACCIONISTAS') {
+        loadData(false);
+      }
+    };
+
+    window.addEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+    const interval = setInterval(() => loadData(true), 300000);
+    
+    return () => {
+      window.removeEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredUsers = useMemo(() => {
