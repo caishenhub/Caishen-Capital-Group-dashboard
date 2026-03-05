@@ -178,7 +178,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         <div className="pt-4 border-t border-gray-100">
            <button 
-             onClick={() => window.open('https://registro-caishen-capital-group.vercel.app/', '_blank')}
+             onClick={() => window.open('https://registro.caishencapitalgroup.com/', '_blank')}
              className="w-full bg-surface-subtle text-accent font-black py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent hover:text-white transition-all uppercase text-[9px] tracking-widest border border-surface-border"
            >
              <UserPlus size={16} />
