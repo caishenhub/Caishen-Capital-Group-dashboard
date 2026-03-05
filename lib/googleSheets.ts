@@ -148,11 +148,15 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   if (!ignoreCache) {
     if (prefetchCache[tabName]) {
-      return prefetchCache[tabName].data;
+      const isExpired = Date.now() - prefetchCache[tabName].timestamp > CACHE_DURATION;
+      if (!isExpired) return prefetchCache[tabName].data;
     }
     if (localCached) {
-      prefetchCache[tabName] = localCached;
-      return localCached.data;
+      const isExpired = Date.now() - localCached.timestamp > CACHE_DURATION;
+      if (!isExpired) {
+        prefetchCache[tabName] = localCached;
+        return localCached.data;
+      }
     }
   }
 
