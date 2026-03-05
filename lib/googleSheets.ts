@@ -148,15 +148,11 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   if (!ignoreCache) {
     if (prefetchCache[tabName]) {
-      const isExpired = Date.now() - prefetchCache[tabName].timestamp > CACHE_DURATION;
-      if (!isExpired) return prefetchCache[tabName].data;
+      return prefetchCache[tabName].data;
     }
     if (localCached) {
-      const isExpired = Date.now() - localCached.timestamp > CACHE_DURATION;
-      if (!isExpired) {
-        prefetchCache[tabName] = localCached;
-        return localCached.data;
-      }
+      prefetchCache[tabName] = localCached;
+      return localCached.data;
     }
   }
 
@@ -164,9 +160,8 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      // Usamos un timestamp único para evitar caché del navegador cuando se solicita ignorar caché
-      const cacheBuster = ignoreCache ? Date.now() : Math.floor(Date.now() / 30000);
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${cacheBuster}`;
+      // Usamos un timestamp simple para evitar caché agresivo del navegador
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 30000)}`;
       
       const response = await fetch(url, { 
         method: 'GET', 

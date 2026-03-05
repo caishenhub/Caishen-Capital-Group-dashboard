@@ -1,10 +1,4 @@
 
-/**
- * CHECKPOINT: 2026-03-04 - Versión Estable Aprobada por el Usuario
- * Diseño: Premium Neón / Dark Mode
- * Funcionalidad: Dashboard, Portfolio, Reports, User Management, Admin Control
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
