@@ -131,7 +131,12 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       
       <div className="relative w-full max-w-[400px] bg-white rounded-[32px] md:rounded-[40px] shadow-2xl border border-white/20 p-8 md:p-10 space-y-6 md:space-y-8 animate-in fade-in zoom-in-95 duration-700">
         <div className="flex flex-col items-center text-center space-y-4 md:space-y-6">
-          <img src="https://i.ibb.co/6G7jJpK/Caishen-capital-fondo-blanco.png" alt="Caishen Capital" className="h-14 md:h-20 w-auto object-contain" />
+          <img 
+            src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" 
+            alt="Caishen Capital Group" 
+            className="h-20 md:h-28 w-auto object-contain" 
+            referrerPolicy="no-referrer"
+          />
           <div className="space-y-1">
             <h1 className="text-xl md:text-2xl font-black text-accent tracking-tighter uppercase">Portal Accionistas</h1>
             <div className="flex items-center justify-center gap-1.5 pt-1">
