@@ -175,7 +175,7 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-col items-center md:items-end gap-4 w-full md:w-auto shrink-0 self-center md:self-auto">
           {/* BOTÓN NUBE ANCHO COMPLETO EN MÓVIL */}
           <button 
-            onClick={() => loadConfigs()}
+            onClick={() => loadConfigs(false, true)}
             disabled={isLoading}
             className="w-full md:w-auto flex items-center justify-center gap-4 px-8 py-3.5 bg-white border border-surface-border rounded-full hover:shadow-premium transition-all active:scale-95 text-accent group cursor-pointer"
           >
