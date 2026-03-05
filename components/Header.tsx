@@ -87,11 +87,12 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenMenu }) => {
         </div>
 
         <div className="flex items-center">
-          <div className="h-7 md:h-12 flex items-center cursor-pointer" onClick={() => navigate('/')}>
+          <div className="h-8 md:h-14 flex items-center cursor-pointer" onClick={() => navigate('/')}>
             <img 
-              src="https://i.ibb.co/LzqxpgRh/cropped-CAISHEN-22-300x300.png" 
-              alt="Caishen Capital" 
+              src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" 
+              alt="Caishen Capital Group" 
               className="h-full w-auto object-contain"
+              referrerPolicy="no-referrer"
             />
           </div>
         </div>
