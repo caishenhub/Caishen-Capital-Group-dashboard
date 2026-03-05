@@ -371,7 +371,7 @@ const ExecutiveSummary: React.FC = () => {
              <div className="flex items-center gap-5 bg-surface-subtle/60 p-5 rounded-3xl border border-surface-border shadow-sm">
                 <div className="flex -space-x-4 overflow-hidden">
                   <div className="size-12 rounded-full border-2 border-primary bg-white flex items-center justify-center shadow-sm z-10">
-                    <img src="https://i.ibb.co/LzqxpgRh/cropped-CAISHEN-22-300x300.png" className="size-8 object-contain" alt="CCG" />
+                    <img src="https://i.ibb.co/zT3RhhT9/CAISHEN-NO-FONDO-AZUL-1.png" className="size-8 object-contain" alt="CCG" />
                   </div>
                   <div className="size-12 rounded-full border-2 border-accent bg-white flex items-center justify-center shadow-sm">
                     <img src="https://i.ibb.co/NgZbhx17/legal-Count.png" className="size-8 object-cover" alt="Legal" />
