@@ -164,8 +164,9 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      // Usamos un timestamp simple para evitar caché agresivo del navegador
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 30000)}`;
+      // Usamos un timestamp único para evitar caché del navegador cuando se solicita ignorar caché
+      const cacheBuster = ignoreCache ? Date.now() : Math.floor(Date.now() / 30000);
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${cacheBuster}`;
       
       const response = await fetch(url, { 
         method: 'GET', 
