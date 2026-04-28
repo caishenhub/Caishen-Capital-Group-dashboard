@@ -78,30 +78,70 @@ const MAX_RETRIES = 3;
 // Global event name for data updates
 export const DATA_UPDATED_EVENT = 'ccg_data_updated';
 
-// Helper to safely read from localStorage
+// --- CACHE & SESSION SECURITY (Vault Protect) ---
+const CACHE_PREFIX = 'v1_ccg_vault_'; // Nuevo prefijo para identificar datos protegidos
+
+// Helper de ofuscación (Base64 + Reversa + Salto) para evitar lectura simple en DevTools
+const encryptData = (data: any): string => {
+  try {
+    const str = JSON.stringify(data);
+    const encoded = btoa(unescape(encodeURIComponent(str)));
+    // Añadimos una capa de reversa y un prefijo de integridad
+    return 'Protected:' + encoded.split('').reverse().join('');
+  } catch (e) {
+    return '';
+  }
+};
+
+const decryptData = (vault: string): any => {
+  try {
+    if (!vault || !vault.startsWith('Protected:')) return null;
+    const content = vault.replace('Protected:', '');
+    const reversed = content.split('').reverse().join('');
+    const decoded = decodeURIComponent(escape(atob(reversed)));
+    return JSON.parse(decoded);
+  } catch (e) {
+    return null;
+  }
+};
+
+// Limpieza de datos antiguos legibles (Saneamiento de Privacidad)
+const purgeLegacyData = () => {
+  const keys = Object.keys(localStorage);
+  const legacyPrefixes = ['ccg_cache_', 'ccg_session', 'LIBRO_ACCIONISTAS', 'CONFIG_MAESTRA', 'RESUMEN_KPI'];
+  
+  keys.forEach(key => {
+    // Si la llave coincide con patrones antiguos o legibles, la borramos
+    if (legacyPrefixes.some(pref => key.startsWith(pref))) {
+      localStorage.removeItem(key);
+    }
+  });
+};
+
+// Helper para leer del localStorage de forma segura
 const getLocalCache = (tabName: string) => {
   try {
-    const cached = localStorage.getItem(`ccg_cache_${tabName}`);
-    if (cached) {
-      return JSON.parse(cached);
+    const vault = localStorage.getItem(`${CACHE_PREFIX}${tabName}`);
+    if (vault) {
+      return decryptData(vault);
     }
   } catch (e) {
-    // Ignore localStorage errors
+    // Silencioso
   }
   return null;
 };
 
-// Helper to safely write to localStorage
+// Helper para escribir en el localStorage de forma segura
 const setLocalCache = (tabName: string, data: any[]) => {
   try {
     const cacheData = { data, timestamp: Date.now() };
-    localStorage.setItem(`ccg_cache_${tabName}`, JSON.stringify(cacheData));
+    localStorage.setItem(`${CACHE_PREFIX}${tabName}`, encryptData(cacheData));
     prefetchCache[tabName] = cacheData;
     
-    // Dispatch event to notify components that data has been updated
+    // Notificamos a los componentes
     window.dispatchEvent(new CustomEvent(DATA_UPDATED_EVENT, { detail: { tabName } }));
   } catch (e) {
-    // Ignore localStorage errors
+    // Silencioso
   }
 };
 
@@ -651,6 +691,7 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
 };
 
 export const warmUpCache = async () => {
+  purgeLegacyData(); // Limpieza inicial antes de cargar nada
   const tabs = [
     'CONFIG_MAESTRA', 
     'HISTORIAL_RENDIMIENTOS', 
