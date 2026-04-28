@@ -229,9 +229,9 @@ function formatSheetDate(dateVal: any): string {
 }
 
 export async function checkConnection(): Promise<boolean> {
-  if (!PROFILE_API_URL || PROFILE_API_URL.length < 20) return false;
+  if (!PROFILE_API_URL) return false;
   try {
-    const res = await fetch(`${PROFILE_API_URL}?tab=PING`, { mode: 'cors' });
+    const res = await fetch(`${PROFILE_API_URL}?tab=PING`);
     return res.ok;
   } catch (e) {
     return false;
@@ -268,9 +268,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
       const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
-        method: 'GET', 
-        mode: 'cors', 
-        redirect: 'follow'
+        method: 'GET'
       });
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
@@ -320,9 +318,7 @@ async function sendToScript(payload: any) {
   try {
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     

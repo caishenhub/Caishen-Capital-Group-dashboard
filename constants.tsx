@@ -3,8 +3,8 @@ import { Asset, Transaction, Report, User, CorporateNotification, AdminNotificat
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
-  // URL MAESTRA ACTUALIZADA POR EL USUARIO
-  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbwnZW8iOTcd1S3NJZXvjQm2IcF_ZgpbLMwA8hII2AE75Pei2aZmPI3aYr0AHIKQop7Ezw/exec',
+  // Ahora usamos un Proxy en el Servidor para ocultar la URL real de Google
+  SCRIPT_API_URL: '/api/gsheets',
   TAB_NAME: 'CONFIG_MAESTRA'
 };
 
