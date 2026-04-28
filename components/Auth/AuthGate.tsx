@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, getSession, setSession } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -11,16 +11,44 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userPool, setUserPool] = useState<any[]>([]);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPoolLoading, setIsPoolLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const MAX_ATTEMPTS = 5;
+  const BLOCK_TIME = 1000 * 60 * 5; // 5 minutos
+  const SESSION_TTL = 1000 * 60 * 60 * 24; // 24 horas
+
   useEffect(() => {
-    const session = localStorage.getItem('ccg_session');
-    if (session) {
-      setIsAuthenticated(true);
-      warmUpCache();
-    }
+    const checkSecurityState = () => {
+      const blockedUntil = localStorage.getItem('ccg_safety_lock');
+      if (blockedUntil) {
+        const remaining = parseInt(blockedUntil) - Date.now();
+        if (remaining > 0) {
+          setIsBlocked(true);
+          setError(`Bloqueo de seguridad activo.`);
+          setTimeout(() => {
+            setIsBlocked(false);
+            localStorage.removeItem('ccg_safety_lock');
+          }, remaining);
+        } else {
+          localStorage.removeItem('ccg_safety_lock');
+        }
+      }
+    };
+
+    const validateSession = () => {
+      const session = getSession();
+      if (session) {
+        setIsAuthenticated(true);
+        warmUpCache();
+      }
+    };
+
+    checkSecurityState();
+    validateSession();
     setIsLoading(false);
 
     const loadUserPool = async () => {
@@ -38,6 +66,10 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const handleIdentifierSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBlocked) {
+      setError('Acceso bloqueado por seguridad. Reintente más tarde.');
+      return;
+    }
     const input = identifier.toLowerCase().trim();
     if (!input) return;
     
@@ -68,26 +100,43 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const validateAccess = useCallback(async () => {
     if (!foundUser || pin.length !== 4) return;
+    if (isBlocked) return;
     
     setIsSyncing(true);
     const userPin = String(findValue(foundUser, ['PIN_ACCESO', 'pin', 'clave']) || '');
 
     if (userPin === pin) {
-      localStorage.setItem('ccg_session', JSON.stringify({ 
+      setSession({ 
         uid: findValue(foundUser, ['UID_SOCIO', 'uid']), 
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
-        shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
-        ts: Date.now() 
-      }));
+        shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0')
+      });
+      
       setIsAuthenticated(true);
       setShowPinModal(false);
+      setAttempts(0);
+      localStorage.removeItem('ccg_safety_lock');
     } else {
-      setError('PIN Incorrecto');
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      setError(`PIN Incorrecto (${newAttempts}/${MAX_ATTEMPTS})`);
       setPin('');
       setIsSyncing(false);
+
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const lockTime = Date.now() + BLOCK_TIME;
+        localStorage.setItem('ccg_safety_lock', String(lockTime));
+        setIsBlocked(true);
+        setError(`Acceso bloqueado por 5 minutos.`);
+        setTimeout(() => {
+          setIsBlocked(false);
+          setAttempts(0);
+          localStorage.removeItem('ccg_safety_lock');
+        }, BLOCK_TIME);
+      }
     }
-  }, [foundUser, pin]);
+  }, [foundUser, pin, attempts, isBlocked]);
 
   const addDigit = (digit: string) => {
     if (pin.length < 4) setPin(prev => prev + digit);

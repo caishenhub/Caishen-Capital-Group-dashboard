@@ -9,6 +9,8 @@ import {
   findValue, 
   parseSheetNumber, 
   fetchPortfolioStructure, 
+  getSession,
+  setSession,
   PortfolioCategory,
   DATA_UPDATED_EVENT 
 } from '../lib/googleSheets';
@@ -64,9 +66,8 @@ const Dashboard: React.FC = () => {
       setHistoryData(performanceData || []);
       setPortfolioData(pData || []);
       
-      const sessionStr = localStorage.getItem('ccg_session');
-      if (sessionStr && sociosData) {
-        const session = JSON.parse(sessionStr);
+      const session = getSession();
+      if (session && sociosData) {
         const updatedUser = sociosData.find(u => 
           String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase() === String(session.uid).toLowerCase()
         );
@@ -74,10 +75,10 @@ const Dashboard: React.FC = () => {
         if (updatedUser) {
           const newShares = parseInt(findValue(updatedUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0');
           if (newShares !== session.shares) {
-            localStorage.setItem('ccg_session', JSON.stringify({
+            setSession({
               ...session,
               shares: newShares
-            }));
+            });
             window.dispatchEvent(new window.Event('finance_update'));
           }
         }

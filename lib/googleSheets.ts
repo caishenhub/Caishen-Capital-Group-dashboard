@@ -105,6 +105,59 @@ const setLocalCache = (tabName: string, data: any[]) => {
   }
 };
 
+// --- SESSION SECURITY HELPERS (Vault Protect) ---
+// Soporte para caracteres UTF-8 en Base64 (Nombres con acentos)
+const toVaultBase64 = (str: string) => btoa(unescape(encodeURIComponent(str)));
+const fromVaultBase64 = (str: string) => decodeURIComponent(escape(atob(str)));
+
+const generateSignature = (data: string) => {
+  return btoa(data.split('').reverse().join('')).slice(0, 10);
+};
+
+export const getSession = () => {
+  try {
+    const vault = localStorage.getItem('ccg_session_vault');
+    if (!vault) return null;
+
+    if (!vault.includes('.')) {
+      // Formato antiguo o corrupto detectado
+      localStorage.removeItem('ccg_session_vault');
+      return null;
+    }
+
+    const [payload, signature] = vault.split('.');
+    if (!payload || !signature || signature !== generateSignature(payload)) {
+      return null;
+    }
+
+    const decoded = fromVaultBase64(payload);
+    const session = JSON.parse(decoded);
+    
+    // Verificación de expiración (24h)
+    if (session && session.ts && (Date.now() - session.ts < 1000 * 60 * 60 * 24)) {
+      return session;
+    } else {
+      localStorage.removeItem('ccg_session_vault');
+    }
+  } catch (e) {
+    console.warn("Fallo al validar bóveda de sesión:", e);
+    localStorage.removeItem('ccg_session_vault');
+  }
+  return null;
+};
+
+export const setSession = (sessionData: any) => {
+  try {
+    const jsonStr = JSON.stringify({ ...sessionData, ts: Date.now() });
+    const payload = toVaultBase64(jsonStr);
+    const signature = generateSignature(payload);
+    localStorage.setItem('ccg_session_vault', `${payload}.${signature}`);
+    localStorage.removeItem('ccg_session'); // Clean up old keys
+  } catch (e) {
+    console.error("Error setting session vault:", e);
+  }
+};
+
 export const norm = (str: any): string => 
   String(str || '')
     .trim()
