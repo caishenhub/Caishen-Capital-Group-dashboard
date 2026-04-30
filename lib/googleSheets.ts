@@ -264,23 +264,27 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      // Usamos un timestamp simple para evitar caché agresivo del navegador
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
+      // Usamos Date.now() para un cache busting absoluto en cada peticion si es necesario
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_t=${Date.now()}`;
       
       const response = await fetch(url, { 
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
       const json = await response.json();
       
-      if (json.error) {
-        console.warn(`API Error in ${tabName}:`, json.error);
-        return localCached?.data || [];
+      if (!json || (json.error && !json.data)) {
+        throw new Error(json.error || 'Respuesta vacía o error del servidor');
       }
 
-      const rows = Array.isArray(json) ? json : (json.rows || []);
+      const rows = Array.isArray(json) ? json : (json.data || json.rows || []);
       const processedData = rows.map((row: any) => {
         const cleanRow: any = {};
         Object.keys(row).forEach(key => { 
@@ -289,17 +293,24 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
         return cleanRow;
       });
 
-      setLocalCache(tabName, processedData);
+      if (processedData.length > 0) {
+        setLocalCache(tabName, processedData);
+      }
       return processedData;
     } catch (err) {
       if (attempt < MAX_RETRIES) {
-        // Espera exponencial corta antes de reintentar
         await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         return fetchWithRetry(attempt + 1);
       }
       console.error(`Fetch error for ${tabName} after ${MAX_RETRIES} retries:`, err);
-      // Fallback crítico: si falla todo, devolvemos lo que tengamos en caché local aunque sea viejo
-      return localCached?.data || [];
+      
+      // Si falló el servidor y tenemos caché, lo devolvemos
+      if (localCached && localCached.data) {
+        return localCached.data;
+      }
+      
+      // Si no hay nada, lanzamos el error para que la UI sepa que NO es que el socio no exista, sino que NO hay datos
+      throw err;
     }
   };
 

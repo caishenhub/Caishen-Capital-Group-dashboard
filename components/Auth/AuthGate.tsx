@@ -52,11 +52,13 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsLoading(false);
 
     const loadUserPool = async () => {
+      setError('');
       try {
         const data = await fetchTableData('LIBRO_ACCIONISTAS');
         setUserPool(data || []);
       } catch (e) {
         console.error("Error cargando padrón preventivo:", e);
+        // No mostramos error inmediato aquí, lo haremos al intentar loguear si sigue fallando
       } finally {
         setIsPoolLoading(false);
       }
@@ -78,18 +80,27 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     try {
       let currentPool = userPool;
+      let databaseError = false;
       
-      // Si el padrón está vacío, intentamos una recarga forzada
-      if (currentPool.length === 0) {
+      // Si el padrón está vacío o es inválido, intentamos una recarga forzada
+      if (!currentPool || currentPool.length === 0) {
         try {
           const freshData = await fetchTableData('LIBRO_ACCIONISTAS', true);
           if (freshData && freshData.length > 0) {
             currentPool = freshData;
             setUserPool(freshData);
+          } else {
+            databaseError = true;
           }
         } catch (fetchErr) {
           console.error("Fallo reintento de carga de padrón:", fetchErr);
+          databaseError = true;
         }
+      }
+
+      if (databaseError) {
+        setError('FALLO DE CONEXIÓN: NO SE PUDO ESTABLECER COMPATIBILIDAD CON EL MOTOR DE DATOS.');
+        return;
       }
 
       const user = currentPool.find(u => {
