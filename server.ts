@@ -24,25 +24,40 @@ async function startServer() {
     const GOOGLE_URL = (envUrl && envUrl.startsWith('http')) ? envUrl : REAL_GOOGLE_URL;
 
     try {
-      // Reenviamos los parámetros de consulta (tab, etc)
-      const response = await axios({
+      console.log(`[Proxy] ${req.method} request for tab: ${req.query.tab || 'unknown'}`);
+      
+      const config: any = {
         method: req.method,
         url: GOOGLE_URL,
         params: req.query,
-        data: req.body,
-        maxRedirects: 5,
-        validateStatus: () => true, // Permite que axios pase el status real
+        maxRedirects: 10,
+        timeout: 35000, 
+        validateStatus: () => true,
         headers: {
           'Accept': 'application/json',
-          'Content-Type': req.headers['content-type'] || 'application/json'
+          'User-Agent': 'CCG-Proxy/1.0',
         }
-      });
+      };
+
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        config.data = req.body;
+        config.headers['Content-Type'] = req.headers['content-type'] || 'application/json';
+      }
+
+      const response = await axios(config);
+
+      // Aseguramos que la respuesta sea JSON si lo esperamos
+      if (typeof response.data === 'string' && response.data.includes('document.getElementById')) {
+        // Esto pasa si Google redirige a una página de login o error HTML
+        console.error("[Proxy] Recibida respuesta HTML inesperada de Google (posible error de permisos)");
+        return res.status(500).json({ error: "El motor de datos devolvió una interfaz web en lugar de datos JSON. Revise permisos." });
+      }
 
       res.status(response.status).send(response.data);
     } catch (error: any) {
-      console.error("Proxy Error:", error.message);
+      console.error("[Proxy Error]:", error.message);
       res.status(500).json({
-        error: "Error al comunicar con el proveedor de datos",
+        error: "Fallo de conexión con el motor de datos",
         message: error.message
       });
     }

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache, getSession, setSession } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, getSession, setSession, norm } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -77,10 +77,35 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsSyncing(true);
 
     try {
-      const user = userPool.find(u => {
-        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
-        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
-        return uId === input || uEmail === input;
+      let currentPool = userPool;
+      
+      // Si el padrón está vacío, intentamos una recarga forzada
+      if (currentPool.length === 0) {
+        try {
+          const freshData = await fetchTableData('LIBRO_ACCIONISTAS', true);
+          if (freshData && freshData.length > 0) {
+            currentPool = freshData;
+            setUserPool(freshData);
+          }
+        } catch (fetchErr) {
+          console.error("Fallo reintento de carga de padrón:", fetchErr);
+        }
+      }
+
+      const user = currentPool.find(u => {
+        const rawId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '');
+        const rawEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '');
+        
+        const cleanId = rawId.toLowerCase().trim();
+        const cleanEmail = rawEmail.toLowerCase().trim();
+        
+        // Comparación flexible: Exacta o Normalizada (por si hay guiones especiales o caracteres ocultos)
+        const isMatch = cleanId === input || 
+                        cleanEmail === input || 
+                        norm(rawId) === norm(input) || 
+                        norm(rawEmail) === norm(input);
+                        
+        return isMatch;
       });
 
       if (user) {
