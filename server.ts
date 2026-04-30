@@ -22,21 +22,24 @@ async function startServer() {
     
     // Si la URL del ENV no empieza con http, usamos la URL real guardada internamente
     const GOOGLE_URL = (envUrl && envUrl.startsWith('http')) ? envUrl : REAL_GOOGLE_URL;
+    const GOOGLE_KEY = process.env.GOOGLE_SCRIPT_KEY || "I423#^$&$B!$@V@$";
 
     try {
       console.log(`[Proxy] ${req.method} request for tab: ${req.query.tab || 'unknown'}`);
+      console.log(`[Proxy] Origin: ${req.headers.origin || 'none'}`);
       
       const config: any = {
         method: req.method,
         url: GOOGLE_URL,
-        params: { ...req.query, _cache: Date.now() },
+        // Usamos params serializados manualmente para evitar problemas de encoding
+        params: { ...req.query, key: GOOGLE_KEY, _cache: Date.now() },
         maxRedirects: 15,
-        timeout: 60000, // 60 seconds
+        timeout: 45000, 
         validateStatus: () => true,
-        responseType: 'text', // Recibimos como texto para procesar manualmente si es necesario
         headers: {
           'Accept': 'application/json, text/plain, */*',
-          // No enviamos User-Agent personalizado para evitar bloqueos por bots
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Cache-Control': 'no-cache'
         }
       };
 
@@ -48,20 +51,18 @@ async function startServer() {
       const response = await axios(config);
       let data = response.data;
 
-      // Intentamos parsear si parece JSON
-      if (typeof data === 'string') {
-        if (data.includes('document.getElementById') || data.includes('window.location')) {
-           console.error("[Proxy] Respuesta HTML detectada (bloqueo de Google)");
-           return res.status(502).json({ 
-             error: "El motor de datos devolvió una página web de seguridad en lugar de datos. Esto suele ser por un bloqueo de Google al servidor de proxy.",
-             details: "Google detectó la petición como tráfico automatizado (CAPTCHA/Login)."
-           });
-        }
-        try {
-          data = JSON.parse(data);
-        } catch (e) {
-          // Si no es JSON, lo dejamos como texto
-        }
+      // Si Google nos bloquea, a veces devuelve un error 429 o una página de login/captcha
+      if (response.status === 429) {
+        return res.status(429).json({ error: "Límite de peticiones de Google excedido. Espere unos minutos." });
+      }
+
+      // Si la respuesta es HTML (página de Google de error o login)
+      if (typeof data === 'string' && (data.includes('document.getElementById') || data.includes('<html'))) {
+          console.error("[Proxy] Bloqueo de Google detectado (HTML)");
+          return res.status(502).json({ 
+            error: "El motor de datos está temporalmente inaccesible desde esta red.",
+            details: "Google devolvió una página web de seguridad en lugar de datos JSON."
+          });
       }
 
       res.status(response.status).send(data);

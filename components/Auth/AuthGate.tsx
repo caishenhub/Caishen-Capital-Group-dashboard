@@ -92,14 +92,15 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           } else {
             databaseError = true;
           }
-        } catch (fetchErr) {
+        } catch (fetchErr: any) {
           console.error("Fallo reintento de carga de padrón:", fetchErr);
+          setError(`DIAGNÓSTICO: ERROR DE MOTOR (${fetchErr.message || 'DESCONOCIDO'}). RECARGUE LA PÁGINA.`);
           databaseError = true;
         }
       }
 
-      if (databaseError) {
-        setError('FALLO DE CONEXIÓN: NO SE PUDO ESTABLECER COMPATIBILIDAD CON EL MOTOR DE DATOS. REINTENTE O CONSULTE AL SOPORTE.');
+      if (databaseError && !error.includes('DIAGNÓSTICO')) {
+        setError('FALLO DE CONEXIÓN: SINCRONIZACIÓN FALLIDA CON EL MOTOR DE DATOS. REINTENTE.');
         return;
       }
 
