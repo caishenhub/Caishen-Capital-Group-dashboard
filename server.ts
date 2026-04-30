@@ -29,13 +29,13 @@ async function startServer() {
       const config: any = {
         method: req.method,
         url: GOOGLE_URL,
-        params: req.query,
-        maxRedirects: 10,
-        timeout: 35000, 
+        params: { ...req.query, _m: Date.now() },
+        maxRedirects: 15,
+        timeout: 45000, 
         validateStatus: () => true,
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'CCG-Proxy/1.0',
+          'User-Agent': 'CCG-Mobile-Proxy/1.1',
         }
       };
 

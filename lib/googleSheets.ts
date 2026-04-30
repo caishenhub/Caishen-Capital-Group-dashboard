@@ -268,12 +268,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
       const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_t=${Date.now()}`;
       
       const response = await fetch(url, { 
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+        method: 'GET'
       });
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
