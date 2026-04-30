@@ -29,13 +29,14 @@ async function startServer() {
       const config: any = {
         method: req.method,
         url: GOOGLE_URL,
-        params: { ...req.query, _m: Date.now() },
+        params: { ...req.query, _cache: Date.now() },
         maxRedirects: 15,
-        timeout: 45000, 
+        timeout: 60000, // 60 seconds
         validateStatus: () => true,
+        responseType: 'text', // Recibimos como texto para procesar manualmente si es necesario
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'CCG-Mobile-Proxy/1.1',
+          'Accept': 'application/json, text/plain, */*',
+          // No enviamos User-Agent personalizado para evitar bloqueos por bots
         }
       };
 
@@ -45,19 +46,29 @@ async function startServer() {
       }
 
       const response = await axios(config);
+      let data = response.data;
 
-      // Aseguramos que la respuesta sea JSON si lo esperamos
-      if (typeof response.data === 'string' && response.data.includes('document.getElementById')) {
-        // Esto pasa si Google redirige a una página de login o error HTML
-        console.error("[Proxy] Recibida respuesta HTML inesperada de Google (posible error de permisos)");
-        return res.status(500).json({ error: "El motor de datos devolvió una interfaz web en lugar de datos JSON. Revise permisos." });
+      // Intentamos parsear si parece JSON
+      if (typeof data === 'string') {
+        if (data.includes('document.getElementById') || data.includes('window.location')) {
+           console.error("[Proxy] Respuesta HTML detectada (bloqueo de Google)");
+           return res.status(502).json({ 
+             error: "El motor de datos devolvió una página web de seguridad en lugar de datos. Esto suele ser por un bloqueo de Google al servidor de proxy.",
+             details: "Google detectó la petición como tráfico automatizado (CAPTCHA/Login)."
+           });
+        }
+        try {
+          data = JSON.parse(data);
+        } catch (e) {
+          // Si no es JSON, lo dejamos como texto
+        }
       }
 
-      res.status(response.status).send(response.data);
+      res.status(response.status).send(data);
     } catch (error: any) {
       console.error("[Proxy Error]:", error.message);
       res.status(500).json({
-        error: "Fallo de conexión con el motor de datos",
+        error: "Fallo crítico en el túnel de datos",
         message: error.message
       });
     }

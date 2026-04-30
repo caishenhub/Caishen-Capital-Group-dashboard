@@ -99,7 +99,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       }
 
       if (databaseError) {
-        setError('FALLO DE CONEXIÓN: NO SE PUDO ESTABLECER COMPATIBILIDAD CON EL MOTOR DE DATOS.');
+        setError('FALLO DE CONEXIÓN: NO SE PUDO ESTABLECER COMPATIBILIDAD CON EL MOTOR DE DATOS. REINTENTE O CONSULTE AL SOPORTE.');
         return;
       }
 
@@ -110,7 +110,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         const cleanId = rawId.toLowerCase().trim();
         const cleanEmail = rawEmail.toLowerCase().trim();
         
-        // Comparación flexible: Exacta o Normalizada (por si hay guiones especiales o caracteres ocultos)
+        // Comparación flexible
         const isMatch = cleanId === input || 
                         cleanEmail === input || 
                         norm(rawId) === norm(input) || 
@@ -125,10 +125,11 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         warmUpCache(); 
         setError('');
       } else {
-        setError('Socio no encontrado en el padrón oficial.');
+        setError('USUARIO NO RECONOCIDO: VERIFIQUE SU ID O CORREO.');
       }
-    } catch (e) {
-      setError('Error de conexión con el servidor.');
+    } catch (e: any) {
+      setError(`FALLO DE ENLACE: ${e.message || 'ERROR DESCONOCIDO'}`);
+      console.error("Auth Fetch Error:", e);
     } finally {
       setIsSyncing(false);
     }

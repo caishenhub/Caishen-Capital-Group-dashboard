@@ -264,19 +264,30 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      // Usamos Date.now() para un cache busting absoluto en cada peticion si es necesario
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_t=${Date.now()}`;
+      // Aseguramos URL absoluta para mejorar compatibilidad en iframes móviles
+      const baseUrl = window.location.origin;
+      const url = new URL(PROFILE_API_URL, baseUrl).href + `?tab=${encodeURIComponent(tabName)}&_t=${Date.now()}`;
       
       const response = await fetch(url, { 
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
       });
       
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok) {
+        let errorMsg = `HTTP Error: ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errorMsg = errJson.error || errorMsg;
+        } catch (e) { /* ignore */ }
+        throw new Error(errorMsg);
+      }
       
       const json = await response.json();
       
       if (!json || (json.error && !json.data)) {
-        throw new Error(json.error || 'Respuesta vacía o error del servidor');
+        throw new Error(json.error || 'Respuesta vacía del servidor');
       }
 
       const rows = Array.isArray(json) ? json : (json.data || json.rows || []);
