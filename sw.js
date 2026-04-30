@@ -33,16 +33,10 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  const isApi = url.pathname.startsWith('/api/');
   const isGoogleScript = url.hostname === 'script.google.com' || url.hostname === 'script.googleusercontent.com';
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
-      // API calls should ALWAYS go to network
-      if (isApi) {
-        return fetch(event.request);
-      }
-      
       // For Google Scripts, we prefer network but fallback to cache
       if (isGoogleScript) {
         return fetch(event.request).then(response => {

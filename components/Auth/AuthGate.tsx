@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache, getSession, setSession, norm } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, getSession, setSession } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,13 +52,11 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsLoading(false);
 
     const loadUserPool = async () => {
-      setError('');
       try {
         const data = await fetchTableData('LIBRO_ACCIONISTAS');
         setUserPool(data || []);
       } catch (e) {
         console.error("Error cargando padrón preventivo:", e);
-        // No mostramos error inmediato aquí, lo haremos al intentar loguear si sigue fallando
       } finally {
         setIsPoolLoading(false);
       }
@@ -79,45 +77,10 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsSyncing(true);
 
     try {
-      let currentPool = userPool;
-      let databaseError = false;
-      
-      // Si el padrón está vacío o es inválido, intentamos una recarga forzada
-      if (!currentPool || currentPool.length === 0) {
-        try {
-          const freshData = await fetchTableData('LIBRO_ACCIONISTAS', true);
-          if (freshData && freshData.length > 0) {
-            currentPool = freshData;
-            setUserPool(freshData);
-          } else {
-            databaseError = true;
-          }
-        } catch (fetchErr: any) {
-          console.error("Fallo reintento de carga de padrón:", fetchErr);
-          setError(`DIAGNÓSTICO: ERROR DE MOTOR (${fetchErr.message || 'DESCONOCIDO'}). RECARGUE LA PÁGINA.`);
-          databaseError = true;
-        }
-      }
-
-      if (databaseError && !error.includes('DIAGNÓSTICO')) {
-        setError('FALLO DE CONEXIÓN: SINCRONIZACIÓN FALLIDA CON EL MOTOR DE DATOS. REINTENTE.');
-        return;
-      }
-
-      const user = currentPool.find(u => {
-        const rawId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '');
-        const rawEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '');
-        
-        const cleanId = rawId.toLowerCase().trim();
-        const cleanEmail = rawEmail.toLowerCase().trim();
-        
-        // Comparación flexible
-        const isMatch = cleanId === input || 
-                        cleanEmail === input || 
-                        norm(rawId) === norm(input) || 
-                        norm(rawEmail) === norm(input);
-                        
-        return isMatch;
+      const user = userPool.find(u => {
+        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
+        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
+        return uId === input || uEmail === input;
       });
 
       if (user) {
@@ -126,11 +89,10 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         warmUpCache(); 
         setError('');
       } else {
-        setError('USUARIO NO RECONOCIDO: VERIFIQUE SU ID O CORREO.');
+        setError('Socio no encontrado en el padrón oficial.');
       }
-    } catch (e: any) {
-      setError(`FALLO DE ENLACE: ${e.message || 'ERROR DESCONOCIDO'}`);
-      console.error("Auth Fetch Error:", e);
+    } catch (e) {
+      setError('Error de conexión con el servidor.');
     } finally {
       setIsSyncing(false);
     }

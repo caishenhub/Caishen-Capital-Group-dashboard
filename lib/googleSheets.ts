@@ -229,9 +229,9 @@ function formatSheetDate(dateVal: any): string {
 }
 
 export async function checkConnection(): Promise<boolean> {
-  if (!PROFILE_API_URL) return false;
+  if (!PROFILE_API_URL || PROFILE_API_URL.length < 20) return false;
   try {
-    const res = await fetch(`${PROFILE_API_URL}?tab=PING`);
+    const res = await fetch(`${PROFILE_API_URL}?tab=PING`, { mode: 'cors' });
     return res.ok;
   } catch (e) {
     return false;
@@ -264,33 +264,25 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      // Aseguramos URL absoluta para mejorar compatibilidad en iframes móviles
-      const baseUrl = window.location.origin;
-      const url = new URL(PROFILE_API_URL, baseUrl).href + `?tab=${encodeURIComponent(tabName)}&_t=${Date.now()}`;
+      // Usamos un timestamp simple para evitar caché agresivo del navegador
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
+        method: 'GET', 
+        mode: 'cors', 
+        redirect: 'follow'
       });
       
-      if (!response.ok) {
-        let errorMsg = `HTTP Error: ${response.status}`;
-        try {
-          const errJson = await response.json();
-          errorMsg = errJson.error || errorMsg;
-        } catch (e) { /* ignore */ }
-        throw new Error(errorMsg);
-      }
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
       const json = await response.json();
       
-      if (!json || (json.error && !json.data)) {
-        throw new Error(json.error || 'Respuesta vacía del servidor');
+      if (json.error) {
+        console.warn(`API Error in ${tabName}:`, json.error);
+        return localCached?.data || [];
       }
 
-      const rows = Array.isArray(json) ? json : (json.data || json.rows || []);
+      const rows = Array.isArray(json) ? json : (json.rows || []);
       const processedData = rows.map((row: any) => {
         const cleanRow: any = {};
         Object.keys(row).forEach(key => { 
@@ -299,24 +291,17 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
         return cleanRow;
       });
 
-      if (processedData.length > 0) {
-        setLocalCache(tabName, processedData);
-      }
+      setLocalCache(tabName, processedData);
       return processedData;
     } catch (err) {
       if (attempt < MAX_RETRIES) {
+        // Espera exponencial corta antes de reintentar
         await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         return fetchWithRetry(attempt + 1);
       }
       console.error(`Fetch error for ${tabName} after ${MAX_RETRIES} retries:`, err);
-      
-      // Si falló el servidor y tenemos caché, lo devolvemos
-      if (localCached && localCached.data) {
-        return localCached.data;
-      }
-      
-      // Si no hay nada, lanzamos el error para que la UI sepa que NO es que el socio no exista, sino que NO hay datos
-      throw err;
+      // Fallback crítico: si falla todo, devolvemos lo que tengamos en caché local aunque sea viejo
+      return localCached?.data || [];
     }
   };
 
@@ -335,7 +320,9 @@ async function sendToScript(payload: any) {
   try {
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
     
