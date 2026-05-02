@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache, getSession, setSession } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,37 +18,23 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const MAX_ATTEMPTS = 5;
-  const BLOCK_TIME = 1000 * 60 * 5; // 5 minutos
-  const SESSION_TTL = 1000 * 60 * 60 * 24; // 24 horas
 
   useEffect(() => {
-    const checkSecurityState = () => {
-      const blockedUntil = localStorage.getItem('ccg_safety_lock');
-      if (blockedUntil) {
-        const remaining = parseInt(blockedUntil) - Date.now();
-        if (remaining > 0) {
-          setIsBlocked(true);
-          setError(`Bloqueo de seguridad activo.`);
-          setTimeout(() => {
-            setIsBlocked(false);
-            localStorage.removeItem('ccg_safety_lock');
-          }, remaining);
+    try {
+      const encryptedSession = localStorage.getItem('ccg_session_vault');
+      if (encryptedSession) {
+        // Validación básica de integridad de sesión
+        const session = JSON.parse(atob(encryptedSession));
+        if (session && session.ts && (Date.now() - session.ts < 1000 * 60 * 60 * 24)) {
+          setIsAuthenticated(true);
+          warmUpCache();
         } else {
-          localStorage.removeItem('ccg_safety_lock');
+          localStorage.removeItem('ccg_session_vault');
         }
       }
-    };
-
-    const validateSession = () => {
-      const session = getSession();
-      if (session) {
-        setIsAuthenticated(true);
-        warmUpCache();
-      }
-    };
-
-    checkSecurityState();
-    validateSession();
+    } catch (e) {
+      localStorage.removeItem('ccg_session_vault');
+    }
     setIsLoading(false);
 
     const loadUserPool = async () => {
@@ -106,34 +92,35 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const userPin = String(findValue(foundUser, ['PIN_ACCESO', 'pin', 'clave']) || '');
 
     if (userPin === pin) {
-      setSession({ 
+      const sessionData = { 
         uid: findValue(foundUser, ['UID_SOCIO', 'uid']), 
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
-        shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0')
-      });
+        shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
+        ts: Date.now() 
+      };
+      
+      // Ofuscación de sesión (Base64) - Capa básica de protección visual
+      localStorage.setItem('ccg_session_vault', btoa(JSON.stringify(sessionData)));
+      localStorage.removeItem('ccg_session'); // Limpiar sesión antigua insegura
       
       setIsAuthenticated(true);
       setShowPinModal(false);
       setAttempts(0);
-      localStorage.removeItem('ccg_safety_lock');
     } else {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
-      setError(`PIN Incorrecto (${newAttempts}/${MAX_ATTEMPTS})`);
+      setError('PIN Incorrecto');
       setPin('');
       setIsSyncing(false);
 
       if (newAttempts >= MAX_ATTEMPTS) {
-        const lockTime = Date.now() + BLOCK_TIME;
-        localStorage.setItem('ccg_safety_lock', String(lockTime));
         setIsBlocked(true);
-        setError(`Acceso bloqueado por 5 minutos.`);
+        setError(`Demasiados intentos. Bloqueo de seguridad activado.`);
         setTimeout(() => {
           setIsBlocked(false);
           setAttempts(0);
-          localStorage.removeItem('ccg_safety_lock');
-        }, BLOCK_TIME);
+        }, 1000 * 60 * 5); // 5 minutos de bloqueo
       }
     }
   }, [foundUser, pin, attempts, isBlocked]);

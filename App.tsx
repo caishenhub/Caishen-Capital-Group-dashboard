@@ -115,7 +115,7 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
 };
 
 const App: React.FC = () => {
-  const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20;
+  const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || (GOOGLE_CONFIG.SCRIPT_API_URL.length < 20 && !GOOGLE_CONFIG.SCRIPT_API_URL.startsWith('/'));
 
   useEffect(() => {
     if (!isConfigMissing) {

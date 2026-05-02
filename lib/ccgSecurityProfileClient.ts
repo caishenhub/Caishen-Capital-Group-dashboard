@@ -28,9 +28,7 @@ export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ succe
   try {
     const response = await fetch(SECURITY_WEBAPP_URL, {
       method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -53,9 +51,7 @@ export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Pr
   try {
     const response = await fetch(SECURITY_WEBAPP_URL, {
       method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 

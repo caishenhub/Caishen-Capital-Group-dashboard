@@ -78,123 +78,30 @@ const MAX_RETRIES = 3;
 // Global event name for data updates
 export const DATA_UPDATED_EVENT = 'ccg_data_updated';
 
-// --- CACHE & SESSION SECURITY (Vault Protect) ---
-const CACHE_PREFIX = 'v1_ccg_vault_'; // Nuevo prefijo para identificar datos protegidos
-
-// Helper de ofuscación (Base64 + Reversa + Salto) para evitar lectura simple en DevTools
-const encryptData = (data: any): string => {
-  try {
-    const str = JSON.stringify(data);
-    const encoded = btoa(unescape(encodeURIComponent(str)));
-    // Añadimos una capa de reversa y un prefijo de integridad
-    return 'Protected:' + encoded.split('').reverse().join('');
-  } catch (e) {
-    return '';
-  }
-};
-
-const decryptData = (vault: string): any => {
-  try {
-    if (!vault || !vault.startsWith('Protected:')) return null;
-    const content = vault.replace('Protected:', '');
-    const reversed = content.split('').reverse().join('');
-    const decoded = decodeURIComponent(escape(atob(reversed)));
-    return JSON.parse(decoded);
-  } catch (e) {
-    return null;
-  }
-};
-
-// Limpieza de datos antiguos legibles (Saneamiento de Privacidad)
-const purgeLegacyData = () => {
-  const keys = Object.keys(localStorage);
-  const legacyPrefixes = ['ccg_cache_', 'ccg_session', 'LIBRO_ACCIONISTAS', 'CONFIG_MAESTRA', 'RESUMEN_KPI'];
-  
-  keys.forEach(key => {
-    // Si la llave coincide con patrones antiguos o legibles, la borramos
-    if (legacyPrefixes.some(pref => key.startsWith(pref))) {
-      localStorage.removeItem(key);
-    }
-  });
-};
-
-// Helper para leer del localStorage de forma segura
+// Helper to safely read from localStorage
 const getLocalCache = (tabName: string) => {
   try {
-    const vault = localStorage.getItem(`${CACHE_PREFIX}${tabName}`);
-    if (vault) {
-      return decryptData(vault);
+    const cached = localStorage.getItem(`ccg_cache_${tabName}`);
+    if (cached) {
+      return JSON.parse(cached);
     }
   } catch (e) {
-    // Silencioso
+    // Ignore localStorage errors
   }
   return null;
 };
 
-// Helper para escribir en el localStorage de forma segura
+// Helper to safely write to localStorage
 const setLocalCache = (tabName: string, data: any[]) => {
   try {
     const cacheData = { data, timestamp: Date.now() };
-    localStorage.setItem(`${CACHE_PREFIX}${tabName}`, encryptData(cacheData));
+    localStorage.setItem(`ccg_cache_${tabName}`, JSON.stringify(cacheData));
     prefetchCache[tabName] = cacheData;
     
-    // Notificamos a los componentes
+    // Dispatch event to notify components that data has been updated
     window.dispatchEvent(new CustomEvent(DATA_UPDATED_EVENT, { detail: { tabName } }));
   } catch (e) {
-    // Silencioso
-  }
-};
-
-// --- SESSION SECURITY HELPERS (Vault Protect) ---
-// Soporte para caracteres UTF-8 en Base64 (Nombres con acentos)
-const toVaultBase64 = (str: string) => btoa(unescape(encodeURIComponent(str)));
-const fromVaultBase64 = (str: string) => decodeURIComponent(escape(atob(str)));
-
-const generateSignature = (data: string) => {
-  return btoa(data.split('').reverse().join('')).slice(0, 10);
-};
-
-export const getSession = () => {
-  try {
-    const vault = localStorage.getItem('ccg_session_vault');
-    if (!vault) return null;
-
-    if (!vault.includes('.')) {
-      // Formato antiguo o corrupto detectado
-      localStorage.removeItem('ccg_session_vault');
-      return null;
-    }
-
-    const [payload, signature] = vault.split('.');
-    if (!payload || !signature || signature !== generateSignature(payload)) {
-      return null;
-    }
-
-    const decoded = fromVaultBase64(payload);
-    const session = JSON.parse(decoded);
-    
-    // Verificación de expiración (24h)
-    if (session && session.ts && (Date.now() - session.ts < 1000 * 60 * 60 * 24)) {
-      return session;
-    } else {
-      localStorage.removeItem('ccg_session_vault');
-    }
-  } catch (e) {
-    console.warn("Fallo al validar bóveda de sesión:", e);
-    localStorage.removeItem('ccg_session_vault');
-  }
-  return null;
-};
-
-export const setSession = (sessionData: any) => {
-  try {
-    const jsonStr = JSON.stringify({ ...sessionData, ts: Date.now() });
-    const payload = toVaultBase64(jsonStr);
-    const signature = generateSignature(payload);
-    localStorage.setItem('ccg_session_vault', `${payload}.${signature}`);
-    localStorage.removeItem('ccg_session'); // Clean up old keys
-  } catch (e) {
-    console.error("Error setting session vault:", e);
+    // Ignore localStorage errors
   }
 };
 
@@ -320,9 +227,7 @@ async function sendToScript(payload: any) {
   try {
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     
@@ -691,7 +596,6 @@ export const fetchExecutionsFromApi = async (category: MarketCategory = 'forex')
 };
 
 export const warmUpCache = async () => {
-  purgeLegacyData(); // Limpieza inicial antes de cargar nada
   const tabs = [
     'CONFIG_MAESTRA', 
     'HISTORIAL_RENDIMIENTOS', 
