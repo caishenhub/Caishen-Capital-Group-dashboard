@@ -180,10 +180,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
         redirect: 'follow'
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP Error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
       const json = await response.json();
       

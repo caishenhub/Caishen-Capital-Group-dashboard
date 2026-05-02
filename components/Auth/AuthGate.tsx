@@ -63,11 +63,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsSyncing(true);
 
     try {
-      if (userPool.length === 0) {
-        setError('Error: No se pudo cargar el listado de socios. Verifique su conexión.');
-        return;
-      }
-
       const user = userPool.find(u => {
         const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
         const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
