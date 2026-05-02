@@ -227,7 +227,9 @@ async function sendToScript(payload: any) {
   try {
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
     

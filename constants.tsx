@@ -3,9 +3,8 @@ import { Asset, Transaction, Report, User, CorporateNotification, AdminNotificat
 
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
-  // HOJA MAESTRA: https://docs.google.com/spreadsheets/d/1hLSLgqejoE73zd7bbH7ZVKf0jhDAp9YebK4cbMl5sac/edit
-  // LA PETICIÓN SIGUE PASANDO POR EL SERVIDOR SEGURO PARA PROTECCIÓN DE DATOS
-  SCRIPT_API_URL: '/api/gsheets',
+  // URL MAESTRA ACTUALIZADA POR EL USUARIO
+  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbwnZW8iOTcd1S3NJZXvjQm2IcF_ZgpbLMwA8hII2AE75Pei2aZmPI3aYr0AHIKQop7Ezw/exec',
   TAB_NAME: 'CONFIG_MAESTRA'
 };
 
