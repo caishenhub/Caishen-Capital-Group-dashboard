@@ -22,7 +22,8 @@ export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ succe
   const payload = {
     action: 'UPDATE_PIN',
     uid: uid,
-    newPin: newPin
+    newPin: newPin,
+    token: GOOGLE_CONFIG.SECURITY_TOKEN
   };
 
   try {
@@ -47,6 +48,7 @@ export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Pr
   const payload = {
     action: 'UPDATE_PROFILE',
     uid: uid,
+    token: GOOGLE_CONFIG.SECURITY_TOKEN,
     ...data
   };
 

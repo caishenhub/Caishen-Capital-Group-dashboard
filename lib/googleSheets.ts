@@ -172,7 +172,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
       // Usamos un timestamp simple para evitar caché agresivo del navegador
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&token=${GOOGLE_CONFIG.SECURITY_TOKEN}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
         method: 'GET', 
@@ -225,12 +225,18 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
 async function sendToScript(payload: any) {
   try {
+    // Inject security token into all POST payloads
+    const securedPayload = {
+      ...payload,
+      token: GOOGLE_CONFIG.SECURITY_TOKEN
+    };
+
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(securedPayload)
     });
     
     if (!response.ok) throw new Error(`POST Error: ${response.status}`);
