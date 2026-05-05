@@ -37,28 +37,29 @@ async function startServer() {
   app.get("/api/sheets", async (req, res) => {
     try {
       const { tab } = req.query;
-      const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL;
-      const token = process.env.GOOGLE_SECURITY_TOKEN;
+      const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL?.trim();
+      const token = process.env.GOOGLE_SECURITY_TOKEN?.trim();
 
       if (!scriptUrl || !token) {
         console.error("Faltan variables de entorno: GOOGLE_SCRIPT_APP_URL o GOOGLE_SECURITY_TOKEN");
         return res.status(500).json(wrapResponse({ 
           error: "Error de configuración de seguridad",
-          details: "El servidor no tiene configuradas las credenciales de enlace con Google. Revise la configuración del entorno."
+          details: "El servidor no tiene configuradas las credenciales de enlace con Google. Revise la pestaña 'Settings' y asegúrese de que las variables están definidas."
         }));
       }
 
-      if (!tab) {
+      const tabName = String(tab || '').trim();
+      if (!tabName) {
         return res.status(400).json(wrapResponse({ error: "Parámetro 'tab' es requerido" }));
       }
 
       // Construimos la URL hacia Google con el Token oculto
       // Aseguramos que los parámetros estén correctamente codificados para evitar errores 500
       const separator = scriptUrl.includes('?') ? '&' : '?';
-      const targetUrl = `${scriptUrl}${separator}tab=${encodeURIComponent(tab as string)}&token=${encodeURIComponent(token)}`;
+      const targetUrl = `${scriptUrl}${separator}tab=${encodeURIComponent(tabName)}&token=${encodeURIComponent(token)}`;
       
       // Log detallado (ofuscando token para seguridad)
-      const debugUrl = `${scriptUrl}${separator}tab=${tab}&token=HIDDEN&_=${Date.now()}`;
+      const debugUrl = `${scriptUrl}${separator}tab=${tabName}&token=HIDDEN&_=${Date.now()}`;
       console.log(`[Proxy GET] Fetching: ${debugUrl}`);
 
       const response = await fetch(targetUrl, {

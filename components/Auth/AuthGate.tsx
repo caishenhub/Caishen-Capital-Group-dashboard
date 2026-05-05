@@ -112,7 +112,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         setError(''); // Limpiamos error si logramos traer datos
         console.log(`Sincronización manual completa: ${freshData.length} socios.`);
       } else {
-        setError('⚠️ El servidor devolvió una lista vacía. Verifique la base de datos en Google Sheets.');
+        setError('⚠️ EL PADRÓN DE SOCIOS ESTÁ VACÍO. Verifique la pestaña "LIBRO_ACCIONISTAS" en Google Sheets y el TOKEN de seguridad.');
       }
     } catch (e) {
       setError('Fallo la conexión con Google al intentar sincronizar.');
