@@ -44,19 +44,37 @@ async function startServer() {
         return res.status(500).json(wrapResponse({ error: "Error de configuración de seguridad" }));
       }
 
+      if (!tab) {
+        return res.status(400).json(wrapResponse({ error: "Parámetro 'tab' es requerido" }));
+      }
+
       // Construimos la URL hacia Google con el Token oculto
-      const targetUrl = `${scriptUrl}?tab=${tab}&token=${token}&_=${Date.now()}`;
+      // Aseguramos que no haya problemas de concatenación
+      const separator = scriptUrl.includes('?') ? '&' : '?';
+      const targetUrl = `${scriptUrl}${separator}tab=${tab}&token=${token}&_=${Date.now()}`;
       
-      const response = await fetch(targetUrl);
-      if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
+      const response = await fetch(targetUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Google API Error (${response.status}):`, errorText);
+        throw new Error(`Google API Error: ${response.status}`);
+      }
       
       const data = await response.json();
       
-      // Ofuscamos la respuesta antes de mandarla al cliente para que no sea legible en DevTools
+      // Ofuscamos la respuesta antes de mandarla al cliente
       res.json(wrapResponse(data));
     } catch (error) {
       console.error("Proxy GET Error:", error);
-      res.status(500).json(wrapResponse({ error: "Servicio temporalmente no disponible" }));
+      res.status(500).json(wrapResponse({ 
+        error: "Servicio temporalmente no disponible",
+        details: error instanceof Error ? error.message : String(error)
+      }));
     }
   });
 
@@ -86,7 +104,10 @@ async function startServer() {
 
       const response = await fetch(scriptUrl, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: { 
+          "Content-Type": "text/plain;charset=utf-8",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
         body: JSON.stringify(securedPayload)
       });
       

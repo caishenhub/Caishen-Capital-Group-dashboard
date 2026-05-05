@@ -606,7 +606,8 @@ export const warmUpCache = async () => {
     'LIBRO_ACCIONISTAS', 
     'NOTIFICACIONES', 
     'REPORTES_ADMIN',
-    'DATOS_PAGO_SOCIOS'
+    'DATOS_PAGO_SOCIOS',
+    'DIVIDENDOS'
   ];
   
   // Ejecutamos en paralelo pero con un pequeño delay entre grupos para no saturar
