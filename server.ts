@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import rateLimit from "express-rate-limit";
 import { wrapResponse, deobfuscate } from "./lib/obfuscation";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -11,9 +12,24 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Confía en el proxy (Nginx) para obtener la IP real del usuario
+  app.set('trust proxy', 1);
+
   // Middleware para parsear JSON
   app.use(express.json());
   app.use(express.text({ type: "text/plain" }));
+
+  // --- CAPA DE SEGURIDAD ADICIONAL: RATE LIMITING ---
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100, // limita cada IP a 100 peticiones por ventana
+    message: wrapResponse({ error: "Demasiadas peticiones. Por seguridad, intente más tarde." }),
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Aplicar el limitador a las rutas de API
+  app.use("/api/", limiter);
 
   // --- ESCUDO DE SEGURIDAD (PROXY + OFUSCACIÓN) ---
   
@@ -25,7 +41,7 @@ async function startServer() {
       const token = process.env.GOOGLE_SECURITY_TOKEN;
 
       if (!scriptUrl || !token) {
-        return res.status(500).json({ error: "Configuración del servidor incompleta" });
+        return res.status(500).json(wrapResponse({ error: "Error de configuración de seguridad" }));
       }
 
       // Construimos la URL hacia Google con el Token oculto
@@ -40,7 +56,7 @@ async function startServer() {
       res.json(wrapResponse(data));
     } catch (error) {
       console.error("Proxy GET Error:", error);
-      res.status(500).json({ error: "Error al comunicarse con el motor de datos" });
+      res.status(500).json(wrapResponse({ error: "Servicio temporalmente no disponible" }));
     }
   });
 
@@ -51,7 +67,7 @@ async function startServer() {
       const token = process.env.GOOGLE_SECURITY_TOKEN;
 
       if (!scriptUrl || !token) {
-        return res.status(500).json({ error: "Configuración del servidor incompleta" });
+        return res.status(500).json(wrapResponse({ error: "Error de configuración de seguridad" }));
       }
 
       let payload;
@@ -79,7 +95,7 @@ async function startServer() {
       res.json(wrapResponse(data));
     } catch (error) {
       console.error("Proxy POST Error:", error);
-      res.status(500).json({ error: "Error de escritura en motor de datos" });
+      res.status(500).json(wrapResponse({ error: "No se pudo procesar la solicitud de escritura" }));
     }
   });
 
