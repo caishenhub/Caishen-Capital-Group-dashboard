@@ -22,16 +22,13 @@ export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ succe
   const payload = {
     action: 'UPDATE_PIN',
     uid: uid,
-    newPin: newPin,
-    token: GOOGLE_CONFIG.SECURITY_TOKEN
+    newPin: newPin
   };
 
   try {
     const response = await fetch(SECURITY_WEBAPP_URL, {
       method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -48,16 +45,13 @@ export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Pr
   const payload = {
     action: 'UPDATE_PROFILE',
     uid: uid,
-    token: GOOGLE_CONFIG.SECURITY_TOKEN,
     ...data
   };
 
   try {
     const response = await fetch(SECURITY_WEBAPP_URL, {
       method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 

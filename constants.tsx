@@ -1,12 +1,12 @@
 
 import { Asset, Transaction, Report, User, CorporateNotification, AdminNotification } from './types';
 
-// --- CONFIGURACIÓN GOOGLE INTEGRATION ---
+// --- CONFIGURACIÓN GOOGLE INTEGRATION (OFUSCADA) ---
 export const GOOGLE_CONFIG = {
-  // URL MAESTRA ACTUALIZADA POR EL USUARIO
-  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbw9BF8j6_p9aDhepyQEJpMfBRkt5_gpyoh_Qc3r41VvdYHuDWIhcBFnsAGxNFEaJmxqMw/exec',
+  // Ahora apuntamos a nuestro propio servidor (Proxy) para ocultar la URL real de Google
+  SCRIPT_API_URL: '/api/sheets',
   TAB_NAME: 'CONFIG_MAESTRA',
-  SECURITY_TOKEN: 'CCG_SECURE_ACCESS_2026' // Token de seguridad para comunicación con App Script
+  SECURITY_TOKEN: 'HIDDEN_ON_SERVER' 
 };
 
 // --- SISTEMA DE PERSISTENCIA SEGMENTADA ---

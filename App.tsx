@@ -22,34 +22,6 @@ import { Cloud, CloudOff, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { GOOGLE_CONFIG } from './constants';
 import { checkConnection, warmUpCache } from './lib/googleSheets';
 
-const MissingUrlAlert = () => (
-  <div className="fixed inset-0 z-[10000] bg-accent flex items-center justify-center p-6 text-center">
-    <div className="max-w-md w-full bg-white rounded-[40px] p-10 space-y-8 animate-in zoom-in duration-500">
-      <div className="mx-auto size-24 bg-red-50 rounded-3xl flex items-center justify-center text-red-600 shadow-xl border border-red-100">
-        <ShieldAlert size={48} />
-      </div>
-      <div className="space-y-3">
-        <h1 className="text-2xl font-black text-accent tracking-tighter uppercase">Error de Configuración</h1>
-        <p className="text-sm font-medium text-text-secondary leading-relaxed uppercase tracking-widest">
-          Falta configurar el motor de datos institucional (APPS_SCRIPT_URL).
-        </p>
-      </div>
-      <div className="bg-surface-subtle p-5 rounded-2xl border border-surface-border text-left">
-        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Instrucciones:</p>
-        <p className="text-[11px] font-bold text-accent leading-relaxed">
-          Por favor, asigne la URL de su macro de Google en el archivo <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">constants.tsx</code> para activar el portal.
-        </p>
-      </div>
-      <button 
-        onClick={() => window.location.reload()}
-        className="w-full bg-accent text-primary font-black py-5 rounded-2xl uppercase text-xs tracking-[0.2em] shadow-xl active:scale-95 transition-all"
-      >
-        Reintentar Conexión
-      </button>
-    </div>
-  </div>
-);
-
 const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ children, title }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [key, setKey] = useState(0);
@@ -115,7 +87,7 @@ const Layout: React.FC<{ children: React.ReactNode, title: string }> = ({ childr
 };
 
 const App: React.FC = () => {
-  const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || GOOGLE_CONFIG.SCRIPT_API_URL.length < 20;
+  const isConfigMissing = !GOOGLE_CONFIG.SCRIPT_API_URL || (GOOGLE_CONFIG.SCRIPT_API_URL.length < 10 && !GOOGLE_CONFIG.SCRIPT_API_URL.startsWith('/'));
 
   useEffect(() => {
     if (!isConfigMissing) {
@@ -124,7 +96,33 @@ const App: React.FC = () => {
   }, [isConfigMissing]);
 
   if (isConfigMissing) {
-    return <MissingUrlAlert />;
+    return (
+      <div className="fixed inset-0 z-[10000] bg-accent flex items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white rounded-[40px] p-10 space-y-8 animate-in zoom-in duration-500">
+          <div className="mx-auto size-24 bg-red-50 rounded-3xl flex items-center justify-center text-red-600 shadow-xl border border-red-100">
+            <ShieldAlert size={48} />
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-2xl font-black text-accent tracking-tighter uppercase">Error de Conexión</h1>
+            <p className="text-sm font-medium text-text-secondary leading-relaxed uppercase tracking-widest">
+              El motor de datos no está respondiendo.
+            </p>
+          </div>
+          <div className="bg-surface-subtle p-5 rounded-2xl border border-surface-border text-left">
+            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Estado del Sistema:</p>
+            <p className="text-[11px] font-bold text-accent leading-relaxed">
+              Verifique que las variables de entorno <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">GOOGLE_SCRIPT_APP_URL</code> y <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">GOOGLE_SECURITY_TOKEN</code> estén configuradas correctamente en los ajustes del proyecto.
+            </p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full bg-accent text-primary font-black py-5 rounded-2xl uppercase text-xs tracking-[0.2em] shadow-xl active:scale-95 transition-all"
+          >
+            Reintentar Conexión
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
