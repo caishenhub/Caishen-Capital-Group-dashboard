@@ -105,10 +105,12 @@ const UserManagement: React.FC = () => {
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
+      const term = searchTerm.toLowerCase().trim();
+      if (!term) return true;
+
       const matchesSearch = 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.uid.toLowerCase().includes(searchTerm.toLowerCase());
+        user.name.toLowerCase().includes(term) ||
+        user.uid.toLowerCase().includes(term);
       
       const matchesStatus = 
         statusFilter === 'Todos los Estados' || 

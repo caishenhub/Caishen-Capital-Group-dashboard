@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { 
   ArrowLeft, 
   TrendingUp, 
@@ -200,15 +201,62 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
       return isPostRegistration && rowYear === selectedYear;
     });
     
-    const totalProfit = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD', 'utilidad'])), 0);
+    const yearProfit = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD', 'utilidad'])), 0);
     const totalYield = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'rentabilidad'])), 0);
+    
+    // Función para convertir nombres de meses a números
+    const getMonthNumber = (month: string): number => {
+      const months = {
+        'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6,
+        'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12
+      };
+      const m = String(month).toUpperCase().trim();
+      return months[m as keyof typeof months] || parseInt(m) || 0;
+    };
+
+    // Cálculo de High-Water Mark (HWM) y Capital Actual (Referencia Global Histórica)
     const nominalValue = parseSheetNumber(findValue(config, ['VALOR_NOMINAL_ACCION'])) || 248.85;
-    const balance = user.shares * nominalValue;
+    const initialInvestment = user.shares * nominalValue;
+    
+    // Ordenamos dividendos cronológicamente para procesar la trayectoria del capital
+    const sortedDividends = [...dividends].sort((a, b) => {
+      const yearA = parseInt(String(findValue(a, ['ANIO', 'anio', 'year']) || 0));
+      const monthA = getMonthNumber(String(findValue(a, ['MES', 'mes', 'month']) || ''));
+      const yearB = parseInt(String(findValue(b, ['ANIO', 'anio', 'year']) || 0));
+      const monthB = getMonthNumber(String(findValue(b, ['MES', 'mes', 'month']) || ''));
+      return (yearA * 100 + monthA) - (yearB * 100 + monthB);
+    });
+
+    // Trayectoria del capital basada en el rendimiento porcentual (HWM)
+    // Esto garantiza que todos los socios vean el mismo nivel de pérdida/recuperación porcentual
+    let capitalFactor = 1.0; 
+    
+    for (const d of sortedDividends) {
+      const yieldPct = parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'rentabilidad']));
+      
+      // El capital se ve afectado por la rentabilidad del mes
+      capitalFactor *= (1 + yieldPct);
+      
+      // Si el capital sobrepasa el 100%, el excedente se liquida (se paga al socio)
+      // y el capital vuelve a su base nominal (1.0)
+      if (capitalFactor > 1.0) {
+        capitalFactor = 1.0;
+      }
+    }
+    
+    // Lógica HWM: Si el factor es menor a 1, el capital actual está debajo del inicial
+    const isRecoveryMode = capitalFactor < 0.9999; // Margen de error pequeño
+    const currentCapital = initialInvestment * capitalFactor;
+    const hwmProgress = capitalFactor * 100;
+
     const totalSharesFund = parseSheetNumber(findValue(config, ['TOTAL_ACCIONES_FONDO'])) || 500;
 
     return {
-      balance,
-      totalProfit,
+      initialInvestment,
+      currentCapital,
+      isRecoveryMode,
+      hwmProgress,
+      totalProfit: yearProfit, // Ahora vuelve a ser por año seleccionado
       totalYield,
       participation: ((user.shares / (totalSharesFund || 1)) * 100).toFixed(2),
       yearData: yearDividends
@@ -447,19 +495,104 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
           /* VISTA FINANCIERA */
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target },
-                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon },
-                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Acumulado', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown },
-                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Liquidado en Nube', icon: DollarSign },
-              ].map((stat, i) => (
-                <div key={i} className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all">
-                  <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><stat.icon size={20} /></div>
-                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">{stat.label}</h3>
-                  <div className="text-3xl font-black tracking-tighter text-accent">{stat.value}</div>
-                  <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-tight">{stat.sub}</p>
+              {/* Tarjeta 1: Capital de Inversión con HWM Sutil */}
+              <div className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all relative overflow-hidden group">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 w-fit bg-surface-subtle text-accent rounded-2xl">
+                    <Wallet size={20} />
+                  </div>
+                  
+                  {stats.isRecoveryMode && (
+                    <div className="relative group/info">
+                      <button className="p-2 hover:bg-orange-50 text-orange-400 rounded-full transition-colors cursor-help">
+                        <Info size={14} />
+                      </button>
+                      
+                      {/* Tooltip Dinámico de Estado */}
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white shadow-2xl rounded-2xl p-4 border border-surface-border opacity-0 group-hover/info:opacity-100 translate-y-2 group-hover/info:translate-y-0 pointer-events-none transition-all z-50">
+                        <h4 className="text-[9px] font-black uppercase tracking-widest text-accent mb-2">Restauración de Base</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-[8px] font-bold text-text-secondary">
+                            <span>Balance Nominal:</span>
+                            <span className="text-accent">${stats.initialInvestment.toLocaleString('en-US')}</span>
+                          </div>
+                          <div className="flex justify-between text-[8px] font-bold text-text-secondary">
+                            <span>Pendiente:</span>
+                            <span className="text-orange-500">${(stats.initialInvestment - stats.currentCapital).toLocaleString('en-US')}</span>
+                          </div>
+                          <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${stats.hwmProgress}%` }}
+                              className="h-full bg-orange-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
+
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Capital de Inversión</h3>
+                <div className="flex flex-col">
+                  <div className="text-3xl font-black tracking-tighter text-accent">
+                    ${stats.currentCapital.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-tight">
+                    {stats.isRecoveryMode ? 'Estado de Cobertura' : 'Patrimonio Nominal Corporativo'}
+                  </p>
+                  {stats.isRecoveryMode && (
+                    <span className="text-[9px] font-black text-orange-500">{stats.hwmProgress.toFixed(1)}%</span>
+                  )}
+                </div>
+
+                {/* Barra de progreso sutil en la base */}
+                {stats.isRecoveryMode && (
+                  <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gray-50">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${stats.hwmProgress}%` }}
+                      className="h-full bg-orange-400/30"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Tarjeta 2: Participación */}
+              <div className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all">
+                <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><PieIcon size={20} /></div>
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Participación</h3>
+                <div className="text-3xl font-black tracking-tighter text-accent">{stats.participation}%</div>
+                <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-tight">{user.shares} Acciones Poseídas</p>
+              </div>
+
+              {/* Tarjeta 3: Rendimiento Anual */}
+              <div className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all">
+                <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><TrendingUp size={20} /></div>
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Rendimiento {selectedYear}</h3>
+                <div className={`text-3xl font-black tracking-tighter ${stats.totalYield < 0 ? 'text-red-500' : 'text-accent'}`}>
+                  {(stats.totalYield * 100).toFixed(2)}%
+                </div>
+                <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-tight">Retorno Institucional</p>
+              </div>
+
+              {/* Tarjeta 4: Utilidad Neta (Solo positiva por encima del Capital) */}
+              <div className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all relative overflow-hidden">
+                <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><DollarSign size={20} /></div>
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Utilidad Neta</h3>
+                <div className={`text-3xl font-black tracking-tighter ${stats.totalProfit > 0 ? 'text-accent' : 'text-text-muted/40'}`}>
+                  ${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-tight">Excedente Liquidable</p>
+                {stats.isRecoveryMode && (
+                  <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-[1px]">
+                     <Lock size={16} className="text-accent/20" />
+                  </div>
+                )}
+              </div>
             </section>
 
             <section className="bg-white rounded-[40px] shadow-premium border border-surface-border p-8 md:p-12">
