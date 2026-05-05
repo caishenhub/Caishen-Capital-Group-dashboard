@@ -57,6 +57,10 @@ async function startServer() {
       const separator = scriptUrl.includes('?') ? '&' : '?';
       const targetUrl = `${scriptUrl}${separator}tab=${encodeURIComponent(tab as string)}&token=${encodeURIComponent(token)}`;
       
+      // Log detallado (ofuscando token para seguridad)
+      const debugUrl = `${scriptUrl}${separator}tab=${tab}&token=HIDDEN&_=${Date.now()}`;
+      console.log(`[Proxy GET] Fetching: ${debugUrl}`);
+
       const response = await fetch(targetUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -65,7 +69,11 @@ async function startServer() {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Google API Error (${response.status}):`, errorText);
+        console.error(`[Google API Error] Status: ${response.status}. Body size: ${errorText.length}`);
+        // Si hay un error 500 de Google, es probable que el script haya fallado por tiempo o nombre de pestaña
+        if (response.status === 500) {
+          throw new Error(`Google Apps Script encontró un error interno. Verifique que la pestaña '${tab}' existe y el script está desplegado correctamente.`);
+        }
         throw new Error(`Google API Error: ${response.status}`);
       }
       
