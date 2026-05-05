@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, norm } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,9 +64,16 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     try {
       const user = userPool.find(u => {
-        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
-        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
-        return uId === input || uEmail === input;
+        const uId = findValue(u, ['UID_SOCIO', 'uid', 'id_socio']);
+        const uEmail = findValue(u, ['EMAIL_SOCIO', 'email', 'correo']);
+        
+        // Comparación robusta usando norm para IDs y trim para correos
+        const normalizedId = norm(uId);
+        const normalizedInput = norm(input);
+        const normalizedEmail = String(uEmail || '').toLowerCase().trim();
+        const normalizedInputEmail = input.toLowerCase().trim();
+
+        return normalizedId === normalizedInput || normalizedEmail === normalizedInputEmail;
       });
 
       if (user) {
@@ -97,6 +104,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
         shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
+        registrationDate: findValue(foundUser, ['FECHA_INGRESO', 'registration_date', 'fecha_ingreso']) || null,
         ts: Date.now() 
       };
       
