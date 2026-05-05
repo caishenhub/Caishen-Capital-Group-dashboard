@@ -41,7 +41,11 @@ async function startServer() {
       const token = process.env.GOOGLE_SECURITY_TOKEN;
 
       if (!scriptUrl || !token) {
-        return res.status(500).json(wrapResponse({ error: "Error de configuración de seguridad" }));
+        console.error("Faltan variables de entorno: GOOGLE_SCRIPT_APP_URL o GOOGLE_SECURITY_TOKEN");
+        return res.status(500).json(wrapResponse({ 
+          error: "Error de configuración de seguridad",
+          details: "El servidor no tiene configuradas las credenciales de enlace con Google. Revise la configuración del entorno."
+        }));
       }
 
       if (!tab) {
@@ -49,9 +53,9 @@ async function startServer() {
       }
 
       // Construimos la URL hacia Google con el Token oculto
-      // Aseguramos que no haya problemas de concatenación
+      // Aseguramos que los parámetros estén correctamente codificados para evitar errores 500
       const separator = scriptUrl.includes('?') ? '&' : '?';
-      const targetUrl = `${scriptUrl}${separator}tab=${tab}&token=${token}&_=${Date.now()}`;
+      const targetUrl = `${scriptUrl}${separator}tab=${encodeURIComponent(tab as string)}&token=${encodeURIComponent(token)}`;
       
       const response = await fetch(targetUrl, {
         headers: {

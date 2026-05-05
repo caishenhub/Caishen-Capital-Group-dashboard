@@ -67,9 +67,11 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         const uId = findValue(u, ['UID_SOCIO', 'uid', 'id_socio']);
         const uEmail = findValue(u, ['EMAIL_SOCIO', 'email', 'correo']);
         
-        // Comparación robusta usando norm para IDs y trim para correos
-        const normalizedId = norm(uId);
-        const normalizedInput = norm(input);
+        // Comparación flexible: removemos '#' y '@' para evitar fallos por prefijos
+        const cleanStr = (s: any) => String(s || '').toUpperCase().trim().replace(/[#@]/g, '');
+        
+        const normalizedId = cleanStr(uId);
+        const normalizedInput = cleanStr(input);
         const normalizedEmail = String(uEmail || '').toLowerCase().trim();
         const normalizedInputEmail = input.toLowerCase().trim();
 
@@ -81,8 +83,15 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         setShowPinModal(true);
         warmUpCache(); 
         setError('');
+        console.log(`Login exitoso: ${input}`);
       } else {
-        setError('Socio no encontrado en el padrón oficial.');
+        const poolSize = userPool.length;
+        if (poolSize === 0) {
+          setError('⚠️ ERROR DE CONEXIÓN: No se pudo obtener el padrón de socios. Verifique su conexión o intente en unos minutos.');
+        } else {
+          setError('SOCIO NO ENCONTRADO EN EL PADRÓN OFICIAL.');
+        }
+        console.warn(`Intento de login fallido para: "${input}". Usuarios cargados: ${poolSize}`);
       }
     } catch (e) {
       setError('Error de conexión con el servidor.');
