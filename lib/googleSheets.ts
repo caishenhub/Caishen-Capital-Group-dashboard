@@ -1,8 +1,10 @@
 
 import { GOOGLE_CONFIG, MOCK_REPORTS } from '../constants';
 import { Report, ReportSection, CorporateNotification } from '../types';
+import { unwrapResponse, obfuscate } from './obfuscation';
 
 export interface Execution {
+// ... (mismas interfaces)
   ticket: string;
   symbol: string;
   side: string;
@@ -180,7 +182,8 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
-      const json = await response.json();
+      const wrappedJson = await response.json();
+      const json = unwrapResponse(wrappedJson);
       
       if (json.error) {
         console.warn(`API Error in ${tabName}:`, json.error);
@@ -223,21 +226,18 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
 async function sendToScript(payload: any) {
   try {
-    // El servidor inyectará el SECURITY_TOKEN real antes de mandarlo a Google
+    // Ofuscamos el payload antes de mandarlo al proxy para que no sea legible en la consola
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ _s: obfuscate(JSON.stringify(payload)) })
     });
     
     if (!response.ok) throw new Error(`POST Error: ${response.status}`);
     
-    const text = await response.text();
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      return { success: text.includes('success') || response.ok };
-    }
+    const wrappedText = await response.json();
+    const result = unwrapResponse(wrappedText);
+    return result;
   } catch (err) {
     console.error("Communication error (POST):", err);
     return { success: false, error: String(err) };

@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import { wrapResponse, deobfuscate } from "./lib/obfuscation";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,10 +13,9 @@ async function startServer() {
 
   // Middleware para parsear JSON
   app.use(express.json());
-  // El App Script espera text/plain a veces por CORS, pero aquí somos el servidor, así que JSON está bien
-  app.use(express.text({ type: 'text/plain' }));
+  app.use(express.text({ type: "text/plain" }));
 
-  // --- ESCUDO DE SEGURIDAD (PROXY) ---
+  // --- ESCUDO DE SEGURIDAD (PROXY + OFUSCACIÓN) ---
   
   // Endpoint de Lectura (GET)
   app.get("/api/sheets", async (req, res) => {
@@ -32,12 +32,15 @@ async function startServer() {
       const targetUrl = `${scriptUrl}?tab=${tab}&token=${token}&_=${Date.now()}`;
       
       const response = await fetch(targetUrl);
+      if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
+      
       const data = await response.json();
       
-      res.json(data);
+      // Ofuscamos la respuesta antes de mandarla al cliente para que no sea legible en DevTools
+      res.json(wrapResponse(data));
     } catch (error) {
       console.error("Proxy GET Error:", error);
-      res.status(500).json({ error: "Error al comunicarse con Google Sheets" });
+      res.status(500).json({ error: "Error al comunicarse con el motor de datos" });
     }
   });
 
@@ -51,31 +54,32 @@ async function startServer() {
         return res.status(500).json({ error: "Configuración del servidor incompleta" });
       }
 
-      // Parseamos el body si viene como texto (por compatibilidad con el diseño anterior)
-      let bodyData;
-      if (typeof req.body === 'string') {
-        bodyData = JSON.parse(req.body);
+      let payload;
+      // Soporte para recibir datos ofuscados (bajo la llave _s) o normales
+      if (req.body && req.body._s) {
+        payload = JSON.parse(deobfuscate(req.body._s));
       } else {
-        bodyData = req.body;
+        payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       }
 
-      // Inyectamos el token oculto antes de enviar a Google
+      // Inyectamos el token oculto
       const securedPayload = {
-        ...bodyData,
+        ...payload,
         token: token
       };
 
       const response = await fetch(scriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(securedPayload)
       });
       
       const data = await response.json();
-      res.json(data);
+      // Ofuscamos la respuesta de confirmación también
+      res.json(wrapResponse(data));
     } catch (error) {
       console.error("Proxy POST Error:", error);
-      res.status(500).json({ error: "Error de escritura en Google Sheets" });
+      res.status(500).json({ error: "Error de escritura en motor de datos" });
     }
   });
 

@@ -879,14 +879,20 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                     <button key={num} onClick={() => handlePinDigit(num.toString())} className="h-16 rounded-2xl bg-surface-subtle text-accent font-black text-xl hover:bg-primary transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center" disabled={isUpdatingPin}>{num}</button>
                   ))}
-                  <button onClick={() => setPinBuffer(prev => prev.slice(0, -1))} className="h-16 rounded-2xl bg-red-50 text-red-600 font-black text-[10px] uppercase tracking-widest flex items-center justify-center" disabled={isUpdatingPin}>Del</button>
+                  <button onClick={() => setPinBuffer(prev => prev.slice(0, -1))} className="h-16 rounded-2xl bg-red-50 text-red-600 font-black flex items-center justify-center transition-all active:scale-95 disabled:opacity-50" disabled={isUpdatingPin}>
+                    <span className="text-[10px] uppercase tracking-[0.2em]">Del</span>
+                  </button>
                   <button onClick={() => handlePinDigit('0')} className="h-16 rounded-2xl bg-surface-subtle text-accent font-black text-xl hover:bg-primary transition-all active:scale-95 flex items-center justify-center" disabled={isUpdatingPin}>0</button>
                   <button 
                     onClick={confirmPinUpdate} 
                     disabled={isUpdatingPin || pinBuffer.length < 4} 
-                    className="h-16 rounded-2xl bg-accent text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-30 flex items-center justify-center"
+                    className="h-16 rounded-2xl bg-accent text-primary font-black active:scale-95 disabled:opacity-30 flex items-center justify-center relative overflow-hidden transition-all"
                   >
-                    {isUpdatingPin ? <RefreshCw className="animate-spin" size={20} /> : 'OK'}
+                    {isUpdatingPin ? (
+                      <RefreshCw className="animate-spin" size={20} />
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-[0.2em] w-full text-center">OK</span>
+                    )}
                   </button>
                 </div>
                 {pinError && <p className="text-red-600 text-[10px] font-black uppercase tracking-widest">{pinError}</p>}
