@@ -180,35 +180,17 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
         method: 'GET'
       });
       
-      if (!response.ok) {
-        if (response.status === 500) {
-          console.warn(`[Graceful Fallback] La pestaña ${tabName} no responde (500). Es probable que no exista. Devolviendo lista vacía.`);
-          return localCached?.data || [];
-        }
-        console.error(`HTTP Error for ${tabName}: ${response.status}`);
-        throw new Error(`HTTP Error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
       const wrappedJson = await response.json();
       const json = unwrapResponse(wrappedJson);
       
-      if (json && json.error) {
+      if (json.error) {
         console.warn(`API Error in ${tabName}:`, json.error);
-        // Si hay error en la API, NO sobreescribimos el caché con datos vacíos si ya teníamos algo
-        if (localCached?.data && localCached.data.length > 0) {
-          return localCached.data;
-        }
-        return [];
+        return localCached?.data || [];
       }
 
-      const rows = Array.isArray(json) ? json : (json?.rows || []);
-      
-      // Validación crítica: Si esperamos datos y viene vacío, podría ser un fallo de sincronización
-      if (rows.length === 0 && tabName === 'LIBRO_ACCIONISTAS' && localCached?.data?.length > 0) {
-        console.warn(`Alerta: ${tabName} regresó 0 registros pero el caché tenía ${localCached.data.length}. Manteniendo caché.`);
-        return localCached.data;
-      }
-
+      const rows = Array.isArray(json) ? json : (json.rows || []);
       const processedData = rows.map((row: any) => {
         const cleanRow: any = {};
         Object.keys(row).forEach(key => { 
@@ -624,8 +606,7 @@ export const warmUpCache = async () => {
     'LIBRO_ACCIONISTAS', 
     'NOTIFICACIONES', 
     'REPORTES_ADMIN',
-    'DATOS_PAGO_SOCIOS',
-    'DIVIDENDOS_SOCIOS'
+    'DATOS_PAGO_SOCIOS'
   ];
   
   // Ejecutamos en paralelo pero con un pequeño delay entre grupos para no saturar

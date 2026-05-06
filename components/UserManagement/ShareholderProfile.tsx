@@ -126,15 +126,6 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     });
   };
 
-  const getMonthNumber = (month: string): number => {
-    const months = {
-      'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6,
-      'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12
-    };
-    const m = String(month).toUpperCase().trim();
-    return (months as any)[m] || parseInt(m) || 0;
-  };
-
   const syncProfileData = async () => {
     setIsLoading(true);
     try {
@@ -205,8 +196,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
 
     const yearDividends = dividends.filter(d => {
       const rowYear = parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0));
-      const rowMonth = getMonthNumber(String(findValue(d, ['MES', 'mes', 'month']) || ''));
-      
+      const rowMonth = parseInt(String(findValue(d, ['MES', 'mes', 'month']) || 0));
       const isPostRegistration = (rowYear > regYear) || (rowYear === regYear && rowMonth >= regMonth);
       return isPostRegistration && rowYear === selectedYear;
     });
@@ -214,24 +204,28 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     const yearProfit = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD', 'utilidad'])), 0);
     const totalYield = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'rentabilidad'])), 0);
     
+    // Función para convertir nombres de meses a números
+    const getMonthNumber = (month: string): number => {
+      const months = {
+        'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6,
+        'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12
+      };
+      const m = String(month).toUpperCase().trim();
+      return months[m as keyof typeof months] || parseInt(m) || 0;
+    };
+
     // Cálculo de High-Water Mark (HWM) y Capital Actual (Referencia Global Histórica)
     const nominalValue = parseSheetNumber(findValue(config, ['VALOR_NOMINAL_ACCION'])) || 248.85;
     const initialInvestment = user.shares * nominalValue;
     
-    // Ordenamos dividendos cronológicamente y FILTRAMOS por fecha de registro
-    const sortedDividends = [...dividends]
-      .filter(d => {
-        const rowYear = parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0));
-        const rowMonth = getMonthNumber(String(findValue(d, ['MES', 'mes', 'month']) || ''));
-        return (rowYear > regYear) || (rowYear === regYear && rowMonth >= regMonth);
-      })
-      .sort((a, b) => {
-        const yearA = parseInt(String(findValue(a, ['ANIO', 'anio', 'year']) || 0));
-        const monthA = getMonthNumber(String(findValue(a, ['MES', 'mes', 'month']) || ''));
-        const yearB = parseInt(String(findValue(b, ['ANIO', 'anio', 'year']) || 0));
-        const monthB = getMonthNumber(String(findValue(b, ['MES', 'mes', 'month']) || ''));
-        return (yearA * 100 + monthA) - (yearB * 100 + monthB);
-      });
+    // Ordenamos dividendos cronológicamente para procesar la trayectoria del capital
+    const sortedDividends = [...dividends].sort((a, b) => {
+      const yearA = parseInt(String(findValue(a, ['ANIO', 'anio', 'year']) || 0));
+      const monthA = getMonthNumber(String(findValue(a, ['MES', 'mes', 'month']) || ''));
+      const yearB = parseInt(String(findValue(b, ['ANIO', 'anio', 'year']) || 0));
+      const monthB = getMonthNumber(String(findValue(b, ['MES', 'mes', 'month']) || ''));
+      return (yearA * 100 + monthA) - (yearB * 100 + monthB);
+    });
 
     // Trayectoria del capital basada en el rendimiento porcentual (HWM)
     // Esto garantiza que todos los socios vean el mismo nivel de pérdida/recuperación porcentual

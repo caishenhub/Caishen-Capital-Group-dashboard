@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache, norm } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,18 +64,9 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     try {
       const user = userPool.find(u => {
-        const uId = findValue(u, ['UID_SOCIO', 'uid', 'id_socio']);
-        const uEmail = findValue(u, ['EMAIL_SOCIO', 'email', 'correo']);
-        
-        // Comparación flexible: removemos '#' y '@' para evitar fallos por prefijos
-        const cleanStr = (s: any) => String(s || '').toUpperCase().trim().replace(/[#@]/g, '');
-        
-        const normalizedId = cleanStr(uId);
-        const normalizedInput = cleanStr(input);
-        const normalizedEmail = String(uEmail || '').toLowerCase().trim();
-        const normalizedInputEmail = input.toLowerCase().trim();
-
-        return normalizedId === normalizedInput || normalizedEmail === normalizedInputEmail;
+        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
+        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
+        return uId === input || uEmail === input;
       });
 
       if (user) {
@@ -83,39 +74,11 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         setShowPinModal(true);
         warmUpCache(); 
         setError('');
-        console.log(`Login exitoso para: ${input}. Usuario encontrado en pool.`);
       } else {
-        const poolSize = userPool.length;
-        if (poolSize === 0) {
-          setError('⚠️ ERROR DE CONEXIÓN: No se pudo obtener el padrón de socios. Intente sincronizar manualmente.');
-        } else {
-          setError('SOCIO NO ENCONTRADO EN EL PADRÓN OFICIAL.');
-        }
-        console.warn(`Intento de login fallido para: "${input}". Usuarios en memoria: ${poolSize}`);
+        setError('Socio no encontrado en el padrón oficial.');
       }
     } catch (e) {
       setError('Error de conexión con el servidor.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const forceSync = async () => {
-    setIsSyncing(true);
-    setError('');
-    try {
-      console.log("Iniciando sincronización forzada...");
-      // Forzamos la descarga ignorando cualquier caché
-      const freshData = await fetchTableData('LIBRO_ACCIONISTAS', true);
-      setUserPool(freshData);
-      if (freshData.length > 0) {
-        setError(''); // Limpiamos error si logramos traer datos
-        console.log(`Sincronización manual completa: ${freshData.length} socios.`);
-      } else {
-        setError('⚠️ EL PADRÓN DE SOCIOS ESTÁ VACÍO. Verifique la pestaña "LIBRO_ACCIONISTAS" en Google Sheets y el TOKEN de seguridad.');
-      }
-    } catch (e) {
-      setError('Fallo la conexión con Google al intentar sincronizar.');
     } finally {
       setIsSyncing(false);
     }
@@ -134,7 +97,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
         shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
-        registrationDate: findValue(foundUser, ['FECHA_INGRESO', 'registration_date', 'fecha_ingreso']) || null,
         ts: Date.now() 
       };
       
@@ -235,22 +197,9 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             />
           </div>
           {error && !showPinModal && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-red-600 text-[10px] font-black uppercase bg-red-50 p-3 rounded-xl shadow-sm">
-                <AlertCircle size={14} className="shrink-0" />
-                <span>{error}</span>
-              </div>
-              
-              {error.includes('CONEXIÓN') && (
-                <button 
-                  type="button"
-                  onClick={forceSync}
-                  className="flex items-center justify-center gap-1.5 py-2 text-[9px] font-bold text-slate-500 hover:text-accent transition-colors"
-                >
-                  <RefreshCw size={10} className={isSyncing ? 'animate-spin' : ''} />
-                  FORZAR SINCRONIZACIÓN DE DATOS
-                </button>
-              )}
+            <div className="flex items-center gap-2 text-red-600 text-[10px] font-black uppercase bg-red-50 p-3 rounded-xl">
+              <AlertCircle size={14} />
+              {error}
             </div>
           )}
           <button 

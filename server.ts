@@ -37,66 +37,26 @@ async function startServer() {
   app.get("/api/sheets", async (req, res) => {
     try {
       const { tab } = req.query;
-      const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL?.trim();
-      const token = process.env.GOOGLE_SECURITY_TOKEN?.trim();
+      const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL;
+      const token = process.env.GOOGLE_SECURITY_TOKEN;
 
       if (!scriptUrl || !token) {
-        console.error("Faltan variables de entorno: GOOGLE_SCRIPT_APP_URL o GOOGLE_SECURITY_TOKEN");
-        return res.status(500).json(wrapResponse({ 
-          error: "Error de configuración de seguridad",
-          details: "El servidor no tiene configuradas las credenciales de enlace con Google. Revise la pestaña 'Settings' y asegúrese de que las variables están definidas."
-        }));
-      }
-
-      const tabName = String(tab || '').trim();
-      if (!tabName) {
-        return res.status(400).json(wrapResponse({ error: "Parámetro 'tab' es requerido" }));
+        return res.status(500).json(wrapResponse({ error: "Error de configuración de seguridad" }));
       }
 
       // Construimos la URL hacia Google con el Token oculto
-      // Aseguramos que los parámetros estén correctamente codificados para evitar errores 500
-      const separator = scriptUrl.includes('?') ? '&' : '?';
-      const targetUrl = `${scriptUrl}${separator}tab=${encodeURIComponent(tabName)}&token=${encodeURIComponent(token)}`;
+      const targetUrl = `${scriptUrl}?tab=${tab}&token=${token}&_=${Date.now()}`;
       
-      // Log detallado (ofuscando token para seguridad)
-      const debugUrl = `${scriptUrl}${separator}tab=${tabName}&token=HIDDEN&_=${Date.now()}`;
-      console.log(`[Proxy GET] Fetching: ${debugUrl}`);
-
-      const response = await fetch(targetUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[Google API Error] Status: ${response.status}. Body size: ${errorText.length}`);
-        
-        // Si hay un error 500, extraemos detalles si es posible
-        if (response.status === 500) {
-          return res.status(500).json(wrapResponse({ 
-            error: "Error interno en Google Apps Script", 
-            details: `La pestaña '${tabName}' podría no existir o el script encontró un error. Verifique el nombre en su Google Sheet.`,
-            tab: tabName
-          }));
-        }
-        
-        return res.status(response.status).json(wrapResponse({ 
-          error: `Error de Google (${response.status})`, 
-          details: errorText.substring(0, 200) 
-        }));
-      }
+      const response = await fetch(targetUrl);
+      if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
       
       const data = await response.json();
       
-      // Ofuscamos la respuesta antes de mandarla al cliente
+      // Ofuscamos la respuesta antes de mandarla al cliente para que no sea legible en DevTools
       res.json(wrapResponse(data));
     } catch (error) {
       console.error("Proxy GET Error:", error);
-      res.status(500).json(wrapResponse({ 
-        error: "Servicio temporalmente no disponible",
-        details: error instanceof Error ? error.message : String(error)
-      }));
+      res.status(500).json(wrapResponse({ error: "Servicio temporalmente no disponible" }));
     }
   });
 
@@ -126,10 +86,7 @@ async function startServer() {
 
       const response = await fetch(scriptUrl, {
         method: "POST",
-        headers: { 
-          "Content-Type": "text/plain;charset=utf-8",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(securedPayload)
       });
       
