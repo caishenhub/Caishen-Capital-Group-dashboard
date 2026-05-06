@@ -139,7 +139,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     setIsLoading(true);
     try {
       const [allDividends, masterConfig, accountData, sociosData] = await Promise.all([
-        fetchTableData('DIVIDENDOS'),
+        fetchTableData('DIVIDENDOS_SOCIOS'),
         fetchTableData('CONFIG_MAESTRA'),
         fetchShareholderAccount(user.uid),
         fetchTableData('LIBRO_ACCIONISTAS', true)

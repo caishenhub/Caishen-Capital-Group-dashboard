@@ -17,9 +17,19 @@ async function startServer() {
   const token = process.env.GOOGLE_SECURITY_TOKEN;
 
   console.log("--- INICIANDO SERVIDOR CAISHEN ---");
-  if (!scriptUrl) console.warn("⚠️ ALERTA: GOOGLE_SCRIPT_APP_URL no está configurada.");
-  if (!token) console.warn("⚠️ ALERTA: GOOGLE_SECURITY_TOKEN no está configurada.");
-  if (scriptUrl && token) console.log("✅ Configuración de Google detectada correctamente.");
+  if (!scriptUrl) {
+    console.warn("⚠️ ALERTA: GOOGLE_SCRIPT_APP_URL no está configurada.");
+  } else {
+    console.log(`✅ Macro URL detectada: ${scriptUrl.substring(0, 30)}...`);
+  }
+  
+  if (!token) {
+    console.warn("⚠️ ALERTA: GOOGLE_SECURITY_TOKEN no está configurada.");
+  } else {
+    console.log(`✅ Token detectado: ${token.substring(0, 3)}***${token.substring(token.length - 3)}`);
+  }
+  
+  if (scriptUrl && token) console.log("✅ Configuración de Google lista.");
   console.log("----------------------------------");
 
   // Confía en el proxy (Nginx) para obtener la IP real del usuario
@@ -93,7 +103,9 @@ async function startServer() {
       const separator = scriptUrl.includes('?') ? '&' : '?';
       const encodedTab = encodeURIComponent(tab as string);
       const encodedToken = encodeURIComponent(token as string);
-      const targetUrl = `${scriptUrl}${separator}tab=${encodedTab}&token=${encodedToken}&_=${Date.now()}`;
+      
+      // NOTA: Eliminamos el parámetro cache-buster (_) para evitar colisiones con scripts rígidos
+      const targetUrl = `${scriptUrl}${separator}tab=${encodedTab}&token=${encodedToken}`;
       
       console.log(`[GET] Consultando Google - Pestaña: ${tab}`);
       

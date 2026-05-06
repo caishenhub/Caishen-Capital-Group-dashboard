@@ -143,7 +143,7 @@ export async function checkConnection(): Promise<boolean> {
   if (PROFILE_API_URL.length < 10 && !PROFILE_API_URL.startsWith('/')) return false;
   
   try {
-    const res = await fetch(`${PROFILE_API_URL}?tab=PING&_=${Date.now()}`, { 
+    const res = await fetch(`${PROFILE_API_URL}?tab=PING`, { 
       mode: 'cors',
       headers: {
         'Accept': 'application/json'
@@ -183,7 +183,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
       // Llamamos a nuestro proxy interno. El servidor inyectará el token real.
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Date.now()}`;
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}`;
       
       const response = await fetch(url, { 
         method: 'GET'
@@ -636,7 +636,7 @@ export const warmUpCache = async () => {
     'NOTIFICACIONES', 
     'REPORTES_ADMIN',
     'DATOS_PAGO_SOCIOS',
-    'DIVIDENDOS'
+    'DIVIDENDOS_SOCIOS'
   ];
   
   // Ejecutamos en paralelo pero con un pequeño delay entre grupos para no saturar
