@@ -43,13 +43,24 @@ async function startServer() {
 
   // --- ESCUDO DE SEGURIDAD (PROXY + OFUSCACIÓN) ---
   
-  // Endpoint de Salud (Dashboard)
+  // Endpoint de Salud (Dashboard de diagnóstico)
   app.get("/api/health", (req, res) => {
+    const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL;
+    const token = process.env.GOOGLE_SECURITY_TOKEN;
+    
     res.json({ 
       status: "online", 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
       config: {
-        url_configured: !!process.env.GOOGLE_SCRIPT_APP_URL,
-        token_configured: !!process.env.GOOGLE_SECURITY_TOKEN
+        google_url_configured: !!scriptUrl,
+        google_url_length: scriptUrl ? scriptUrl.length : 0,
+        google_token_configured: !!token,
+        google_token_length: token ? token.length : 0
+      },
+      proxy: {
+        trust_proxy: app.get('trust proxy'),
+        port: PORT
       }
     });
   });

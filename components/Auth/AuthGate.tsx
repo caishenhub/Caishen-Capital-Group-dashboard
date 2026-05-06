@@ -41,8 +41,9 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       try {
         const data = await fetchTableData('LIBRO_ACCIONISTAS');
         setUserPool(data || []);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Error cargando padrón preventivo:", e);
+        setError(`FALLO DE ENLACE: ${e.message || 'Error de red'}`);
       } finally {
         setIsPoolLoading(false);
       }

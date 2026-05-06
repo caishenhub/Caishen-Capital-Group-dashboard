@@ -1,75 +1,49 @@
 /**
- * UTILERÍA DE OFUSCACIÓN CAISHEN v1.1
- * Protege los datos en tránsito entre el cliente y el servidor proxy.
- * Actualizado para soporte robusto de caracteres UTF-8 en Node y Navegador.
+ * UTILERÍA DE OFUSCACIÓN CAISHEN v1.2
+ * Diseño simplificado para máxima compatibilidad entre Node y Navegador.
  */
 
 const SECRET_KEY = "CAISHEN_SHIELD_VIBRANIUM_2026";
 
 /**
- * Aplica un cifrado XOR seguido de Base64 para ocultar datos en el Network Tab.
+ * Encriptación XOR robusta compatible con caracteres especiales.
  */
+function applyXor(input: string): string {
+  const keyLength = SECRET_KEY.length;
+  return input.split('').map((char, i) => {
+    return String.fromCharCode(char.charCodeAt(0) ^ SECRET_KEY.charCodeAt(i % keyLength));
+  }).join('');
+}
+
 export function obfuscate(text: string): string {
   try {
-    // 1. Convertir texto a bytes UTF-8 (Consistente entre entornos)
-    const utf8Bytes = typeof Buffer !== 'undefined' 
-      ? Buffer.from(text, 'utf-8') 
-      : new TextEncoder().encode(text);
-    
-    // 2. Aplicar XOR sobre los bytes
-    const xored = new Uint8Array(utf8Bytes.length);
-    for (let i = 0; i < utf8Bytes.length; i++) {
-      xored[i] = utf8Bytes[i] ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-    }
-    
-    // 3. Convertir a Base64
-    if (typeof Buffer !== 'undefined') {
-      return Buffer.from(xored).toString('base64');
+    const xored = applyXor(text);
+    if (typeof btoa !== 'undefined') {
+      // Navegador: Usamos escape para asegurar compatibilidad con caracteres especiales
+      return btoa(unescape(encodeURIComponent(xored)));
     } else {
-      let binary = '';
-      const len = xored.byteLength;
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(xored[i]);
-      }
-      return btoa(binary);
+      // Servidor (Node)
+      return Buffer.from(xored, 'utf-8').toString('base64');
     }
   } catch (e) {
-    console.error("Obfuscation error:", e);
+    console.error("Error al ofuscar:", e);
     return text;
   }
 }
 
-/**
- * Revierte la ofuscación aplicada.
- */
 export function deobfuscate(encoded: string): string {
   try {
-    // 1. Convertir Base64 a bytes
-    let xored: Uint8Array;
-    if (typeof Buffer !== 'undefined') {
-      xored = new Uint8Array(Buffer.from(encoded, 'base64'));
+    let decoded: string;
+    if (typeof atob !== 'undefined') {
+      // Navegador
+      decoded = decodeURIComponent(escape(atob(encoded)));
     } else {
-      const binary = atob(encoded);
-      xored = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        xored[i] = binary.charCodeAt(i);
-      }
+      // Servidor (Node)
+      decoded = Buffer.from(encoded, 'base64').toString('utf-8');
     }
-    
-    // 2. Revertir XOR
-    const utf8Bytes = new Uint8Array(xored.length);
-    for (let i = 0; i < xored.length; i++) {
-      utf8Bytes[i] = xored[i] ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-    }
-    
-    // 3. Convertir bytes de vuelta a texto UTF-8
-    if (typeof Buffer !== 'undefined') {
-      return Buffer.from(utf8Bytes).toString('utf-8');
-    } else {
-      return new TextDecoder().decode(utf8Bytes);
-    }
+    return applyXor(decoded);
   } catch (e) {
-    console.error("Deobfuscation error:", e);
+    console.error("Error al desofuscar:", e);
     return encoded;
   }
 }
