@@ -71,11 +71,20 @@ async function startServer() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[Google API Error] Status: ${response.status}. Body size: ${errorText.length}`);
-        // Si hay un error 500 de Google, es probable que el script haya fallado por tiempo o nombre de pestaña
+        
+        // Si hay un error 500, extraemos detalles si es posible
         if (response.status === 500) {
-          throw new Error(`Google Apps Script encontró un error interno. Verifique que la pestaña '${tab}' existe y el script está desplegado correctamente.`);
+          return res.status(500).json(wrapResponse({ 
+            error: "Error interno en Google Apps Script", 
+            details: `La pestaña '${tabName}' podría no existir o el script encontró un error. Verifique el nombre en su Google Sheet.`,
+            tab: tabName
+          }));
         }
-        throw new Error(`Google API Error: ${response.status}`);
+        
+        return res.status(response.status).json(wrapResponse({ 
+          error: `Error de Google (${response.status})`, 
+          details: errorText.substring(0, 200) 
+        }));
       }
       
       const data = await response.json();

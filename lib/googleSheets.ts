@@ -181,6 +181,10 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
       });
       
       if (!response.ok) {
+        if (response.status === 500) {
+          console.warn(`[Graceful Fallback] La pestaña ${tabName} no responde (500). Es probable que no exista. Devolviendo lista vacía.`);
+          return localCached?.data || [];
+        }
         console.error(`HTTP Error for ${tabName}: ${response.status}`);
         throw new Error(`HTTP Error: ${response.status}`);
       }
