@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, norm } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,9 +64,16 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     try {
       const user = userPool.find(u => {
-        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
-        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
-        return uId === input || uEmail === input;
+        const uId = findValue(u, ['UID_SOCIO', 'uid', 'id_socio']);
+        const uEmail = findValue(u, ['EMAIL_SOCIO', 'email', 'correo']);
+        
+        // Comparación robusta usando norm para IDs y trim para correos
+        const normalizedId = norm(uId);
+        const normalizedInput = norm(input);
+        const normalizedEmail = String(uEmail || '').toLowerCase().trim();
+        const normalizedInputEmail = input.toLowerCase().trim();
+
+        return normalizedId === normalizedInput || normalizedEmail === normalizedInputEmail;
       });
 
       if (user) {
@@ -75,13 +82,28 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         warmUpCache(); 
         setError('');
       } else {
-        setError('Socio no encontrado en el padrón oficial.');
+        const poolSize = userPool.length;
+        if (poolSize === 0) {
+          setError('⚠️ ERROR DE SINCRONIZACIÓN: La base de datos está vacía o inaccesible. Por favor, use el botón de "Limpiar Caché" abajo.');
+        } else {
+          setError('SOCIO NO ENCONTRADO EN EL PADRÓN OFICIAL.');
+        }
+        console.warn(`Intento de login fallido para: ${input}. Pool size: ${poolSize}`);
       }
     } catch (e) {
       setError('Error de conexión con el servidor.');
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const clearGlobalCache = () => {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('ccg_') || key.startsWith('YIELD_') || key.startsWith('PAYOUT_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    window.location.reload();
   };
 
   const validateAccess = useCallback(async () => {
@@ -97,6 +119,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
         shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
+        registrationDate: findValue(foundUser, ['FECHA_INGRESO', 'registration_date', 'fecha_ingreso']) || null,
         ts: Date.now() 
       };
       
@@ -212,13 +235,21 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </button>
         </form>
 
-        <div className="pt-4 border-t border-gray-100">
+        <div className="pt-4 border-t border-gray-100 space-y-3">
            <button 
              onClick={() => window.open('https://registro.caishencapitalgroup.com/', '_blank')}
              className="w-full bg-surface-subtle text-accent font-black py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent hover:text-white transition-all uppercase text-[9px] tracking-widest border border-surface-border"
            >
              <UserPlus size={16} />
              Registrar Nueva Cuenta
+           </button>
+           
+           <button 
+             onClick={clearGlobalCache}
+             className="w-full bg-white text-gray-400 font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:text-red-500 transition-all uppercase text-[8px] tracking-[0.2em]"
+           >
+             <RefreshCw size={12} />
+             Limpiar Caché y Reintentar
            </button>
         </div>
       </div>

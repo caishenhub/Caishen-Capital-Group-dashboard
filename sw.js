@@ -33,7 +33,20 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+  const isApiRequest = url.pathname.startsWith('/api/');
   const isGoogleScript = url.hostname === 'script.google.com' || url.hostname === 'script.googleusercontent.com';
+
+  // Si es una petición de API, siempre ir a la red y no cachear datos sensibles
+  if (isApiRequest) {
+    event.respondWith(fetch(event.request).catch(() => {
+      return caches.match(event.request).then(cached => {
+        return cached || new Response(JSON.stringify({ error: 'Offline', details: 'API no alcanzable' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      });
+    }));
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
