@@ -55,18 +55,31 @@ async function startServer() {
   
   // Endpoint de Salud (Dashboard de diagnóstico)
   app.get("/api/health", (req, res) => {
-    const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL;
-    const token = process.env.GOOGLE_SECURITY_TOKEN;
+    const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL || "";
+    const token = process.env.GOOGLE_SECURITY_TOKEN || "";
     
+    const maskContent = (str: string) => {
+      if (!str) return "NOT_SET";
+      if (str.length <= 8) return "***";
+      return `${str.substring(0, 4)}...${str.substring(str.length - 4)}`;
+    };
+
     res.json({ 
       status: "online", 
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
-      config: {
-        google_url_configured: !!scriptUrl,
-        google_url_length: scriptUrl ? scriptUrl.length : 0,
-        google_token_configured: !!token,
-        google_token_length: token ? token.length : 0
+      diagnostics: {
+        google_url: {
+          set: !!scriptUrl,
+          length: scriptUrl.length,
+          preview: maskContent(scriptUrl),
+          is_valid_url: scriptUrl.startsWith('https://')
+        },
+        google_token: {
+          set: !!token,
+          length: token.length,
+          preview: maskContent(token)
+        }
       },
       proxy: {
         trust_proxy: app.get('trust proxy'),

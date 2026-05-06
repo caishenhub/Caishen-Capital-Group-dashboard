@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
+import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw, ShieldCheck, Activity, LogIn, User } from 'lucide-react';
 import { fetchTableData, findValue, warmUpCache, norm } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -95,6 +95,21 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       setError('Error de conexión con el servidor.');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const [diagInfo, setDiagInfo] = useState<any>(null);
+  const [showDiag, setShowDiag] = useState(false);
+
+  const runDiagnostics = async () => {
+    try {
+      const res = await fetch('/api/health');
+      const data = await res.json();
+      setDiagInfo(data);
+      setShowDiag(true);
+    } catch (e) {
+      setDiagInfo({ error: "No se pudo conectar con el servidor de diagnóstico" });
+      setShowDiag(true);
     }
   };
 
@@ -246,6 +261,14 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
            </button>
            
            <button 
+             onClick={runDiagnostics}
+             className="w-full bg-blue-50 text-blue-500 font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100 transition-all uppercase text-[8px] tracking-[0.2em]"
+           >
+             <ShieldCheck size={12} />
+             Verificar Variables
+           </button>
+
+           <button 
              onClick={clearGlobalCache}
              className="w-full bg-white text-gray-400 font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:text-red-500 transition-all uppercase text-[8px] tracking-[0.2em]"
            >
@@ -254,6 +277,74 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
            </button>
         </div>
       </div>
+
+      {showDiag && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
+            <button 
+              onClick={() => setShowDiag(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-gray-900 font-black mb-4 uppercase text-xs tracking-widest flex items-center gap-2">
+              <Activity size={16} className="text-blue-500" />
+              Estado del Servidor
+            </h3>
+            
+            <div className="space-y-4 font-mono text-[10px]">
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <p className="text-gray-400 mb-1 uppercase font-bold">Respuesta Proxy:</p>
+                <p className={diagInfo?.status === 'online' ? 'text-green-600' : 'text-red-500'}>
+                  {diagInfo?.status || 'Error'}
+                </p>
+              </div>
+
+              {diagInfo?.diagnostics && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-gray-400 mb-1 uppercase font-bold">Google Script URL:</p>
+                    <div className="flex flex-col gap-1">
+                      <p className={diagInfo.diagnostics.google_url.set ? 'text-green-600 font-bold' : 'text-red-500'}>
+                        {diagInfo.diagnostics.google_url.set ? 'CONFIGURADO' : 'PENDIENTE'}
+                      </p>
+                      <p className="text-gray-500">Longitud: {diagInfo.diagnostics.google_url.length} chars</p>
+                      <p className="text-accent bg-accent/5 px-2 py-1 rounded inline-block">
+                        {diagInfo.diagnostics.google_url.preview}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-gray-400 mb-1 uppercase font-bold">Security Token:</p>
+                    <div className="flex flex-col gap-1">
+                      <p className={diagInfo.diagnostics.google_token.set ? 'text-green-600 font-bold' : 'text-red-500'}>
+                        {diagInfo.diagnostics.google_token.set ? 'CONFIGURADO' : 'PENDIENTE'}
+                      </p>
+                      <p className="text-gray-500">Longitud: {diagInfo.diagnostics.google_token.length} chars</p>
+                      <p className="text-accent bg-accent/5 px-2 py-1 rounded inline-block">
+                        {diagInfo.diagnostics.google_token.preview}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="text-[9px] text-gray-400 pt-2 border-t border-gray-100">
+                <p>Ambiente: {diagInfo?.environment}</p>
+                <p>Cache: LocalStorage detectado</p>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setShowDiag(false)}
+              className="w-full mt-6 bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-all uppercase text-[10px]"
+            >
+              Cerrar Diagnóstico
+            </button>
+          </div>
+        </div>
+      )}
 
       {showPinModal && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pt-safe pb-safe">
