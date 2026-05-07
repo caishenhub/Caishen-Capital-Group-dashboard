@@ -321,6 +321,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       <p className={diagInfo.diagnostics.google_url.set ? 'text-green-600 font-bold' : 'text-red-500'}>
                         {diagInfo.diagnostics.google_url.set ? 'CONFIGURADO' : 'PENDIENTE'}
                       </p>
+                      <p className="text-[9px] text-blue-500 font-bold">Variable: {diagInfo.diagnostics.google_url.source}</p>
                       <div className="flex gap-1">
                         <span className={`px-1 rounded ${diagInfo.diagnostics.google_url.is_valid_url ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {diagInfo.diagnostics.google_url.is_valid_url ? 'HTTPS ✓' : 'NO HTTPS ✗'}
@@ -342,11 +343,23 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       <p className={diagInfo.diagnostics.google_token.set ? 'text-green-600 font-bold' : 'text-red-500'}>
                         {diagInfo.diagnostics.google_token.set ? 'CONFIGURADO' : 'PENDIENTE'}
                       </p>
+                      <p className="text-[9px] text-blue-500 font-bold">Variable: {diagInfo.diagnostics.google_token.source}</p>
                       <p className="text-gray-500">Longitud: {diagInfo.diagnostics.google_token.length} chars</p>
                       <p className="text-accent bg-accent/5 px-2 py-1 rounded inline-block">
                         {diagInfo.diagnostics.google_token.preview}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <p className="text-orange-600 mb-1 uppercase font-bold text-[9px] flex items-center gap-1">
+                      <AlertCircle size={10} /> Tips de Diseño:
+                    </p>
+                    <ul className="text-[9px] text-orange-700 list-disc pl-3 space-y-1">
+                      <li>Si el Sheet es tipo <b>"Tabla"</b>, asegúrate que los encabezados estén en la <b>Fila 1</b>.</li>
+                      <li>Si moviste los datos a la <b>Fila 2</b>, la Macro podría fallar al leer nombres de columnas.</li>
+                      <li>Verifica que el nombre de la pestaña coincida <b>exactamente</b> (mayúsculas/minúsculas).</li>
+                    </ul>
                   </div>
                 </div>
               )}

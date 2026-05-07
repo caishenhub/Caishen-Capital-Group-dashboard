@@ -12,34 +12,54 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Validación de variables de entorno al inicio con fallbacks para nombres truncados
-  const getEnv = (keys: string[]) => {
-    for (const key of keys) {
-      if (process.env[key]) return process.env[key]?.trim();
+  // Validación robusta de variables de entorno (algunas pueden estar truncadas)
+  const allEnvKeys = Object.keys(process.env);
+  
+  const findBestVar = (candidates: string[], filter?: (val: string) => boolean) => {
+    // 1. Buscar coincidencias exactas primero
+    for (const key of candidates) {
+      const val = process.env[key]?.trim();
+      if (val && (!filter || filter(val))) return { key, val };
     }
-    return undefined;
+    // 2. Buscar por prefijo si no hay exacta
+    const prefix = candidates[0].substring(0, 15);
+    for (const key of allEnvKeys) {
+      if (key.startsWith(prefix)) {
+        const val = process.env[key]?.trim();
+        if (val && (!filter || filter(val))) return { key, val };
+      }
+    }
+    return null;
   };
 
-  const scriptUrl = getEnv(['GOOGLE_SCRIPT_APP_URL', 'GOOGLE_SCRIPT_URL', 'GOOGLE_SCRIPT_APP_L', 'GOOGLE_SCRIPT_API_U']);
-  const token = getEnv(['GOOGLE_SECURITY_TOKEN', 'GOOGLE_SECURITY_TO', 'GOOGLE_SECURITY_KEY', 'TOKEN', 'GOOGLE_SCRIPT_KEY']);
+  const urlData = findBestVar(
+    ['GOOGLE_SCRIPT_APP_URL', 'GOOGLE_SCRIPT_URL', 'GOOGLE_SCRIPT_APP_L', 'GOOGLE_SCRIPT_API_U'],
+    (v) => v.startsWith('http')
+  );
+  
+  const tokenData = findBestVar(
+    ['GOOGLE_SECURITY_TOKEN', 'GOOGLE_SECURITY_TO', 'GOOGLE_SECURITY_KEY', 'GOOGLE_SCRIPT_KEY', 'TOKEN'],
+    (v) => !v.startsWith('http') && v.length > 5
+  );
 
-  console.log("--- INICIANDO SERVIDOR CAISHEN ---");
-  if (!scriptUrl) {
-    console.warn("⚠️ ALERTA: Macro URL no detectada en ninguna variable conocida.");
+  const scriptUrl = urlData?.val;
+  const token = tokenData?.val;
+
+  console.log("--- DIAGNÓSTICO DE INICIO CAISHEN ---");
+  if (urlData) {
+    console.log(`✅ URL detectada en: ${urlData.key}`);
+    process.env.GOOGLE_SCRIPT_APP_URL = urlData.val;
   } else {
-    console.log(`✅ Macro URL detectada: ${scriptUrl.substring(0, 30)}...`);
-    // Aseguramos que las variables de entorno usadas por el resto del servidor estén seteadas
-    process.env.GOOGLE_SCRIPT_APP_URL = scriptUrl;
+    console.warn("⚠️ ALERTA: No se encontró ninguna URL de Macro (https://...)");
   }
   
-  if (!token) {
-    console.warn("⚠️ ALERTA: Security Token no detectado.");
+  if (tokenData) {
+    console.log(`✅ Token detectado en: ${tokenData.key}`);
+    process.env.GOOGLE_SECURITY_TOKEN = tokenData.val;
   } else {
-    console.log(`✅ Token detectado: ${token.substring(0, 3)}***${token.substring(token.length - 3)}`);
-    process.env.GOOGLE_SECURITY_TOKEN = token;
+    console.warn("⚠️ ALERTA: No se encontró ningún Token de seguridad.");
   }
-  
-  if (scriptUrl && token) console.log("✅ Configuración de Google lista.");
+  console.log("-------------------------------------");
   console.log("----------------------------------");
 
   // Confía en el proxy (Nginx) para obtener la IP real del usuario
@@ -84,6 +104,7 @@ async function startServer() {
       diagnostics: {
         google_url: {
           set: !!scriptUrl,
+          source: urlData?.key || "FALLBACK",
           length: scriptUrl?.length || 0,
           preview: maskContent(scriptUrl || ""),
           is_valid_url: scriptUrl?.startsWith('https://') || false,
@@ -91,6 +112,7 @@ async function startServer() {
         },
         google_token: {
           set: !!token,
+          source: tokenData?.key || "FALLBACK",
           length: token?.length || 0,
           preview: maskContent(token || "")
         }
