@@ -1,10 +1,10 @@
+
 /**
- * CCG SECURITY & PROFILE CLIENT v2.5 (OFUSCADO)
- * Cliente de seguridad con capa de protección en tránsito.
+ * CCG SECURITY & PROFILE CLIENT v2.2
+ * Cliente unificado con el nuevo Master Engine.
  */
 
 import { GOOGLE_CONFIG } from '../constants';
-import { obfuscate, unwrapResponse } from './obfuscation';
 
 const SECURITY_WEBAPP_URL = GOOGLE_CONFIG.SCRIPT_API_URL;
 
@@ -28,16 +28,14 @@ export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ succe
   try {
     const response = await fetch(SECURITY_WEBAPP_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _s: obfuscate(JSON.stringify(payload)) })
+      mode: 'cors',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
 
-    const wrappedResults = await response.json();
-    const result = unwrapResponse(wrappedResults);
-    return { 
-      success: result.success === true || result.status === 'success', 
-      error: result.error 
-    };
+    const result = await response.json();
+    return { success: result.success === true || result.status === 'success', error: result.error };
   } catch (e) {
     return { success: false, error: 'Error de comunicación' };
   }
@@ -55,16 +53,14 @@ export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Pr
   try {
     const response = await fetch(SECURITY_WEBAPP_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _s: obfuscate(JSON.stringify(payload)) })
+      mode: 'cors',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
 
-    const wrappedResults = await response.json();
-    const result = unwrapResponse(wrappedResults);
-    return { 
-      success: result.success === true || result.status === 'success', 
-      error: result.error 
-    };
+    const result = await response.json();
+    return { success: result.success === true || result.status === 'success', error: result.error };
   } catch (e) {
     return { success: false, error: 'Error al actualizar perfil' };
   }

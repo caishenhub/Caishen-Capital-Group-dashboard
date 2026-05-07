@@ -1,10 +1,8 @@
 
 import { GOOGLE_CONFIG, MOCK_REPORTS } from '../constants';
 import { Report, ReportSection, CorporateNotification } from '../types';
-import { unwrapResponse, obfuscate } from './obfuscation';
 
 export interface Execution {
-// ... (mismas interfaces)
   ticket: string;
   symbol: string;
   side: string;
@@ -138,20 +136,11 @@ function formatSheetDate(dateVal: any): string {
 }
 
 export async function checkConnection(): Promise<boolean> {
-  if (!PROFILE_API_URL) return false;
-  // Permitir URLs cortas si son relativas (ej: /api/sheets)
-  if (PROFILE_API_URL.length < 10 && !PROFILE_API_URL.startsWith('/')) return false;
-  
+  if (!PROFILE_API_URL || PROFILE_API_URL.length < 20) return false;
   try {
-    const res = await fetch(`${PROFILE_API_URL}?tab=PING`, { 
-      mode: 'cors',
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
+    const res = await fetch(`${PROFILE_API_URL}?tab=PING`, { mode: 'cors' });
     return res.ok;
   } catch (e) {
-    console.error("Connection check failed:", e);
     return false;
   }
 }
@@ -182,36 +171,25 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
-      // Llamamos a nuestro proxy interno. El servidor inyectará el token real.
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}`;
+      // Usamos un timestamp simple para evitar caché agresivo del navegador
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
-        method: 'GET'
+        method: 'GET', 
+        mode: 'cors', 
+        redirect: 'follow'
       });
       
-      if (!response.ok) {
-        console.error(`HTTP Error for ${tabName}: ${response.status}`);
-        throw new Error(`HTTP Error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       
-      const wrappedJson = await response.json();
-      const json = unwrapResponse(wrappedJson);
+      const json = await response.json();
       
-      if (json && json.error) {
+      if (json.error) {
         console.warn(`API Error in ${tabName}:`, json.error);
-        
-        // Si hay un error explícito (ej: 500 o token vencido), lanzamos error
-        throw new Error(json.details || json.error);
+        return localCached?.data || [];
       }
 
-      const rows = Array.isArray(json) ? json : (json?.rows || []);
-      
-      // Validación crítica: Si esperamos datos y viene vacío, podría ser un fallo de sincronización
-      if (rows.length === 0 && tabName === 'LIBRO_ACCIONISTAS' && localCached?.data?.length > 0) {
-        console.warn(`Alerta: ${tabName} regresó 0 registros pero el caché tenía ${localCached.data.length}. Manteniendo caché.`);
-        return localCached.data;
-      }
-
+      const rows = Array.isArray(json) ? json : (json.rows || []);
       const processedData = rows.map((row: any) => {
         const cleanRow: any = {};
         Object.keys(row).forEach(key => { 
@@ -247,18 +225,22 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
 async function sendToScript(payload: any) {
   try {
-    // Ofuscamos el payload antes de mandarlo al proxy para que no sea legible en la consola
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _s: obfuscate(JSON.stringify(payload)) })
+      mode: 'cors',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
     
     if (!response.ok) throw new Error(`POST Error: ${response.status}`);
     
-    const wrappedText = await response.json();
-    const result = unwrapResponse(wrappedText);
-    return result;
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return { success: text.includes('success') || response.ok };
+    }
   } catch (err) {
     console.error("Communication error (POST):", err);
     return { success: false, error: String(err) };
@@ -627,8 +609,7 @@ export const warmUpCache = async () => {
     'LIBRO_ACCIONISTAS', 
     'NOTIFICACIONES', 
     'REPORTES_ADMIN',
-    'DATOS_PAGO_SOCIOS',
-    'DIVIDENDOS_SOCIOS'
+    'DATOS_PAGO_SOCIOS'
   ];
   
   // Ejecutamos en paralelo pero con un pequeño delay entre grupos para no saturar

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw, ShieldCheck, Activity, LogIn, User } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache, norm } from '../../lib/googleSheets';
+import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
+import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,9 +41,8 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       try {
         const data = await fetchTableData('LIBRO_ACCIONISTAS');
         setUserPool(data || []);
-      } catch (e: any) {
+      } catch (e) {
         console.error("Error cargando padrón preventivo:", e);
-        setError(`FALLO DE ENLACE: ${e.message || 'Error de red'}`);
       } finally {
         setIsPoolLoading(false);
       }
@@ -65,16 +64,9 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     try {
       const user = userPool.find(u => {
-        const uId = findValue(u, ['UID_SOCIO', 'uid', 'id_socio']);
-        const uEmail = findValue(u, ['EMAIL_SOCIO', 'email', 'correo']);
-        
-        // Comparación robusta usando norm para IDs y trim para correos
-        const normalizedId = norm(uId);
-        const normalizedInput = norm(input);
-        const normalizedEmail = String(uEmail || '').toLowerCase().trim();
-        const normalizedInputEmail = input.toLowerCase().trim();
-
-        return normalizedId === normalizedInput || normalizedEmail === normalizedInputEmail;
+        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
+        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
+        return uId === input || uEmail === input;
       });
 
       if (user) {
@@ -83,43 +75,13 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         warmUpCache(); 
         setError('');
       } else {
-        const poolSize = userPool.length;
-        if (poolSize === 0) {
-          setError('⚠️ ERROR DE SINCRONIZACIÓN: La base de datos está vacía o inaccesible. Por favor, use el botón de "Limpiar Caché" abajo.');
-        } else {
-          setError('SOCIO NO ENCONTRADO EN EL PADRÓN OFICIAL.');
-        }
-        console.warn(`Intento de login fallido para: ${input}. Pool size: ${poolSize}`);
+        setError('Socio no encontrado en el padrón oficial.');
       }
     } catch (e) {
       setError('Error de conexión con el servidor.');
     } finally {
       setIsSyncing(false);
     }
-  };
-
-  const [diagInfo, setDiagInfo] = useState<any>(null);
-  const [showDiag, setShowDiag] = useState(false);
-
-  const runDiagnostics = async () => {
-    try {
-      const res = await fetch('/api/health');
-      const data = await res.json();
-      setDiagInfo(data);
-      setShowDiag(true);
-    } catch (e) {
-      setDiagInfo({ error: "No se pudo conectar con el servidor de diagnóstico" });
-      setShowDiag(true);
-    }
-  };
-
-  const clearGlobalCache = () => {
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('ccg_') || key.startsWith('YIELD_') || key.startsWith('PAYOUT_')) {
-        localStorage.removeItem(key);
-      }
-    });
-    window.location.reload();
   };
 
   const validateAccess = useCallback(async () => {
@@ -135,7 +97,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
         shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
-        registrationDate: findValue(foundUser, ['FECHA_INGRESO', 'registration_date', 'fecha_ingreso']) || null,
         ts: Date.now() 
       };
       
@@ -251,7 +212,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </button>
         </form>
 
-        <div className="pt-4 border-t border-gray-100 space-y-3">
+        <div className="pt-4 border-t border-gray-100">
            <button 
              onClick={() => window.open('https://registro.caishencapitalgroup.com/', '_blank')}
              className="w-full bg-surface-subtle text-accent font-black py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent hover:text-white transition-all uppercase text-[9px] tracking-widest border border-surface-border"
@@ -259,126 +220,8 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
              <UserPlus size={16} />
              Registrar Nueva Cuenta
            </button>
-           
-           <button 
-             onClick={runDiagnostics}
-             className="w-full bg-blue-50 text-blue-500 font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100 transition-all uppercase text-[8px] tracking-[0.2em]"
-           >
-             <ShieldCheck size={12} />
-             Verificar Variables
-           </button>
-
-           <button 
-             onClick={clearGlobalCache}
-             className="w-full bg-white text-gray-400 font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:text-red-500 transition-all uppercase text-[8px] tracking-[0.2em]"
-           >
-             <RefreshCw size={12} />
-             Limpiar Caché y Reintentar
-           </button>
         </div>
       </div>
-
-      {showDiag && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
-            <button 
-              onClick={() => setShowDiag(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-            <h3 className="text-gray-900 font-black mb-4 uppercase text-xs tracking-widest flex items-center gap-2">
-              <Activity size={16} className="text-blue-500" />
-              Estado del Servidor
-            </h3>
-            
-            <div className="space-y-4 font-mono text-[10px]">
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <p className="text-gray-400 mb-1 uppercase font-bold">Respuesta Proxy:</p>
-                <p className={diagInfo?.status === 'online' ? 'text-green-600' : 'text-red-500'}>
-                  {diagInfo?.status || 'Error'}
-                </p>
-              </div>
-
-              {diagInfo?.available_vars && diagInfo.available_vars.length > 0 && (
-                <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                  <p className="text-blue-400 mb-1 uppercase font-bold text-[8px]">Variables Detectadas:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {diagInfo.available_vars.map((v: string) => (
-                      <span key={v} className="bg-white px-1.5 py-0.5 rounded border border-blue-100 text-[8px] text-blue-600">
-                        {v}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {diagInfo?.diagnostics && (
-                <div className="space-y-3">
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-gray-400 mb-1 uppercase font-bold">Google Script URL:</p>
-                    <div className="flex flex-col gap-1">
-                      <p className={diagInfo.diagnostics.google_url.set ? 'text-green-600 font-bold' : 'text-red-500'}>
-                        {diagInfo.diagnostics.google_url.set ? 'CONFIGURADO' : 'PENDIENTE'}
-                      </p>
-                      <p className="text-[9px] text-blue-500 font-bold">Variable: {diagInfo.diagnostics.google_url.source}</p>
-                      <div className="flex gap-1">
-                        <span className={`px-1 rounded ${diagInfo.diagnostics.google_url.is_valid_url ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {diagInfo.diagnostics.google_url.is_valid_url ? 'HTTPS ✓' : 'NO HTTPS ✗'}
-                        </span>
-                        <span className={`px-1 rounded ${diagInfo.diagnostics.google_url.is_macro_url ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                          {diagInfo.diagnostics.google_url.is_macro_url ? 'MACRO ✓' : 'POSIBLE ERROR ✗'}
-                        </span>
-                      </div>
-                      <p className="text-gray-500">Longitud: {diagInfo.diagnostics.google_url.length} chars</p>
-                      <p className="text-accent bg-accent/5 px-2 py-1 rounded inline-block">
-                        {diagInfo.diagnostics.google_url.preview}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-gray-400 mb-1 uppercase font-bold">Security Token:</p>
-                    <div className="flex flex-col gap-1">
-                      <p className={diagInfo.diagnostics.google_token.set ? 'text-green-600 font-bold' : 'text-red-500'}>
-                        {diagInfo.diagnostics.google_token.set ? 'CONFIGURADO' : 'PENDIENTE'}
-                      </p>
-                      <p className="text-[9px] text-blue-500 font-bold">Variable: {diagInfo.diagnostics.google_token.source}</p>
-                      <p className="text-gray-500">Longitud: {diagInfo.diagnostics.google_token.length} chars</p>
-                      <p className="text-accent bg-accent/5 px-2 py-1 rounded inline-block">
-                        {diagInfo.diagnostics.google_token.preview}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-100">
-                    <p className="text-orange-600 mb-1 uppercase font-bold text-[9px] flex items-center gap-1">
-                      <AlertCircle size={10} /> Tips de Diseño:
-                    </p>
-                    <ul className="text-[9px] text-orange-700 list-disc pl-3 space-y-1">
-                      <li>Si el Sheet es tipo <b>"Tabla"</b>, asegúrate que los encabezados estén en la <b>Fila 1</b>.</li>
-                      <li>Si moviste los datos a la <b>Fila 2</b>, la Macro podría fallar al leer nombres de columnas.</li>
-                      <li>Verifica que el nombre de la pestaña coincida <b>exactamente</b> (mayúsculas/minúsculas).</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-              
-              <div className="text-[9px] text-gray-400 pt-2 border-t border-gray-100">
-                <p>Ambiente: {diagInfo?.environment}</p>
-                <p>Cache: LocalStorage detectado</p>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setShowDiag(false)}
-              className="w-full mt-6 bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-all uppercase text-[10px]"
-            >
-              Cerrar Diagnóstico
-            </button>
-          </div>
-        </div>
-      )}
 
       {showPinModal && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pt-safe pb-safe">
