@@ -12,21 +12,31 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Validación de variables de entorno al inicio
-  const scriptUrl = process.env.GOOGLE_SCRIPT_APP_URL;
-  const token = process.env.GOOGLE_SECURITY_TOKEN;
+  // Validación de variables de entorno al inicio con fallbacks para nombres truncados
+  const getEnv = (keys: string[]) => {
+    for (const key of keys) {
+      if (process.env[key]) return process.env[key]?.trim();
+    }
+    return undefined;
+  };
+
+  const scriptUrl = getEnv(['GOOGLE_SCRIPT_APP_URL', 'GOOGLE_SCRIPT_URL', 'GOOGLE_SCRIPT_APP_L', 'GOOGLE_SCRIPT_API_U']);
+  const token = getEnv(['GOOGLE_SECURITY_TOKEN', 'GOOGLE_SECURITY_TO', 'GOOGLE_SECURITY_KEY', 'TOKEN', 'GOOGLE_SCRIPT_KEY']);
 
   console.log("--- INICIANDO SERVIDOR CAISHEN ---");
   if (!scriptUrl) {
-    console.warn("⚠️ ALERTA: GOOGLE_SCRIPT_APP_URL no está configurada.");
+    console.warn("⚠️ ALERTA: Macro URL no detectada en ninguna variable conocida.");
   } else {
     console.log(`✅ Macro URL detectada: ${scriptUrl.substring(0, 30)}...`);
+    // Aseguramos que las variables de entorno usadas por el resto del servidor estén seteadas
+    process.env.GOOGLE_SCRIPT_APP_URL = scriptUrl;
   }
   
   if (!token) {
-    console.warn("⚠️ ALERTA: GOOGLE_SECURITY_TOKEN no está configurada.");
+    console.warn("⚠️ ALERTA: Security Token no detectado.");
   } else {
     console.log(`✅ Token detectado: ${token.substring(0, 3)}***${token.substring(token.length - 3)}`);
+    process.env.GOOGLE_SECURITY_TOKEN = token;
   }
   
   if (scriptUrl && token) console.log("✅ Configuración de Google lista.");
@@ -64,21 +74,25 @@ async function startServer() {
       return `${str.substring(0, 4)}...${str.substring(str.length - 4)}`;
     };
 
+    const allGoogleVars = Object.keys(process.env).filter(k => k.startsWith('GOOGLE_'));
+    
     res.json({ 
       status: "online", 
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
+      available_vars: allGoogleVars.map(v => `${v} (${process.env[v]?.length}ch)`),
       diagnostics: {
         google_url: {
           set: !!scriptUrl,
-          length: scriptUrl.length,
-          preview: maskContent(scriptUrl),
-          is_valid_url: scriptUrl.startsWith('https://')
+          length: scriptUrl?.length || 0,
+          preview: maskContent(scriptUrl || ""),
+          is_valid_url: scriptUrl?.startsWith('https://') || false,
+          is_macro_url: scriptUrl?.includes('/macros/s/') || false
         },
         google_token: {
           set: !!token,
-          length: token.length,
-          preview: maskContent(token)
+          length: token?.length || 0,
+          preview: maskContent(token || "")
         }
       },
       proxy: {
@@ -117,7 +131,8 @@ async function startServer() {
       const encodedTab = encodeURIComponent(tab as string);
       const encodedToken = encodeURIComponent(token as string);
       
-      // NOTA: Eliminamos el parámetro cache-buster (_) para evitar colisiones con scripts rígidos
+      // NOTA: Google Apps Script a veces devuelve 500 si hay cabeceras extrañas o parámetros de caché
+      // Pero requiere User-Agent para ciertas redirecciones de seguridad
       const targetUrl = `${scriptUrl}${separator}tab=${encodedTab}&token=${encodedToken}`;
       
       console.log(`[GET] Consultando Google - Pestaña: ${tab}`);

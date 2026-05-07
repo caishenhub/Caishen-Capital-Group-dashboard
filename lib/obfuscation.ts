@@ -1,91 +1,45 @@
 /**
- * UTILERÍA DE OFUSCACIÓN CAISHEN v1.3
- * Implementación robusta basada en bytes para compatibilidad total Node/Navegador.
+ * UTILERÍA DE OFUSCACIÓN CAISHEN v1.4
+ * Optimizado para compatibilidad total con Google Apps Script.
  */
 
 const SECRET_KEY = "CAISHEN_SHIELD_VIBRANIUM_2026";
 
 /**
- * Convierte un string a Uint8Array (UTF-8).
+ * XOR simple compatible con caracteres UTF-16 (estándar JS)
  */
-function stringToBytes(str: string): Uint8Array {
-  if (typeof TextEncoder !== 'undefined') {
-    return new TextEncoder().encode(str);
+function xor(str: string): string {
+  const kLen = SECRET_KEY.length;
+  let out = '';
+  for (let i = 0; i < str.length; i++) {
+    out += String.fromCharCode(str.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % kLen));
   }
-  // Fallback para entornos Node antiguos (aunque el agente usa Node moderno)
-  return new Uint8Array(Buffer.from(str, 'utf-8'));
-}
-
-/**
- * Convierte Uint8Array a string (UTF-8).
- */
-function bytesToString(bytes: Uint8Array): string {
-  if (typeof TextDecoder !== 'undefined') {
-    return new TextDecoder().decode(bytes);
-  }
-  return Buffer.from(bytes).toString('utf-8');
-}
-
-/**
- * Aplica XOR sobre un Uint8Array.
- */
-function xor(bytes: Uint8Array): Uint8Array {
-  const keyBytes = stringToBytes(SECRET_KEY);
-  const result = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    result[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
-  }
-  return result;
-}
-
-/**
- * Codifica Uint8Array a Base64.
- */
-function bytesToBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
-  }
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-/**
- * Decodifica Base64 a Uint8Array.
- */
-function base64ToBytes(base64: string): Uint8Array {
-  if (typeof Buffer !== 'undefined') {
-    return new Uint8Array(Buffer.from(base64, 'base64'));
-  }
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+  return out;
 }
 
 export function obfuscate(text: string): string {
   try {
-    const bytes = stringToBytes(text);
-    const xored = xor(bytes);
-    return bytesToBase64(xored);
+    const xored = xor(text);
+    if (typeof btoa !== 'undefined') {
+      return btoa(unescape(encodeURIComponent(xored)));
+    } else {
+      return Buffer.from(xored, 'utf-8').toString('base64');
+    }
   } catch (e) {
-    console.error("Error al ofuscar:", e);
     return text;
   }
 }
 
 export function deobfuscate(encoded: string): string {
   try {
-    const bytes = base64ToBytes(encoded);
-    const xored = xor(bytes);
-    return bytesToString(xored);
+    let decoded: string;
+    if (typeof atob !== 'undefined') {
+      decoded = decodeURIComponent(escape(atob(encoded)));
+    } else {
+      decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+    }
+    return xor(decoded);
   } catch (e) {
-    console.error("Error al desofuscar:", e);
     return encoded;
   }
 }

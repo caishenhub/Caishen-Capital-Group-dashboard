@@ -200,16 +200,8 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
       if (json && json.error) {
         console.warn(`API Error in ${tabName}:`, json.error);
         
-        // Si es un error de configuración del servidor, lo lanzamos para que lo atrape el AuthGate
-        if (json.details || json.error.includes("configuración")) {
-          throw new Error(json.details || json.error);
-        }
-
-        // Si hay error en la API, NO sobreescribimos el caché con datos vacíos si ya teníamos algo
-        if (localCached?.data && localCached.data.length > 0) {
-          return localCached.data;
-        }
-        return [];
+        // Si hay un error explícito (ej: 500 o token vencido), lanzamos error
+        throw new Error(json.details || json.error);
       }
 
       const rows = Array.isArray(json) ? json : (json?.rows || []);

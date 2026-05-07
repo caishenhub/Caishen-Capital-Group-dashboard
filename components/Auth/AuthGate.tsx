@@ -300,6 +300,19 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </p>
               </div>
 
+              {diagInfo?.available_vars && diagInfo.available_vars.length > 0 && (
+                <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                  <p className="text-blue-400 mb-1 uppercase font-bold text-[8px]">Variables Detectadas:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {diagInfo.available_vars.map((v: string) => (
+                      <span key={v} className="bg-white px-1.5 py-0.5 rounded border border-blue-100 text-[8px] text-blue-600">
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {diagInfo?.diagnostics && (
                 <div className="space-y-3">
                   <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -308,6 +321,14 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       <p className={diagInfo.diagnostics.google_url.set ? 'text-green-600 font-bold' : 'text-red-500'}>
                         {diagInfo.diagnostics.google_url.set ? 'CONFIGURADO' : 'PENDIENTE'}
                       </p>
+                      <div className="flex gap-1">
+                        <span className={`px-1 rounded ${diagInfo.diagnostics.google_url.is_valid_url ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {diagInfo.diagnostics.google_url.is_valid_url ? 'HTTPS ✓' : 'NO HTTPS ✗'}
+                        </span>
+                        <span className={`px-1 rounded ${diagInfo.diagnostics.google_url.is_macro_url ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {diagInfo.diagnostics.google_url.is_macro_url ? 'MACRO ✓' : 'POSIBLE ERROR ✗'}
+                        </span>
+                      </div>
                       <p className="text-gray-500">Longitud: {diagInfo.diagnostics.google_url.length} chars</p>
                       <p className="text-accent bg-accent/5 px-2 py-1 rounded inline-block">
                         {diagInfo.diagnostics.google_url.preview}
