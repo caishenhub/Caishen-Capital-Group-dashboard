@@ -15,7 +15,7 @@ import {
   Database
 } from 'lucide-react';
 import ShareholderProfile from './ShareholderProfile';
-import { fetchTableData, findValue, parseSheetNumber, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
+import { fetchTableData, findValue, parseSheetNumber, fetchUserByEmailOrId, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
 
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,12 +46,9 @@ const UserManagement: React.FC = () => {
       setIsAdmin(isUserAdmin);
 
       if (!isUserAdmin) {
-        // FLUJO SOCIO: Buscamos solo SU información
+        // FLUJO SOCIO: Buscamos solo SU información de forma segura (POST)
         if (!ignoreCache && !sessionUser) setIsLoading(true);
-        const data = await fetchTableData('LIBRO_ACCIONISTAS', ignoreCache);
-        const myData = data.find((u: any) => 
-          String(findValue(u, ['UID_SOCIO']) || '').trim().toLowerCase() === String(session.uid).toLowerCase()
-        );
+        const myData = await fetchUserByEmailOrId(session.uid);
 
         if (myData) {
           const mapped = {

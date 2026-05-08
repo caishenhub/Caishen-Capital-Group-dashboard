@@ -372,25 +372,18 @@ export async function updateShareholderPin(uid: string, newPin: string): Promise
 }
 
 export async function fetchUserByEmailOrId(identifier: string): Promise<any | null> {
-  // En lugar de fetchTableData('LIBRO_ACCIONISTAS'), pedimos una acción específica
-  // Esto requiere que el Apps Script soporte la acción 'GET_USER' o similar
-  // Si no lo soporta, caerá en el default de devolver la tabla, pero con el token
+  // SEGURIDAD CRÍTICA: Solo usamos POST para pedir UN usuario específico al servidor.
+  // El servidor devolverá null si el token es inválido o el usuario no existe.
   const res = await sendToScript({ 
     action: 'GET_USER', 
     id: identifier 
   });
   
-  if (res && res.data) return res.data;
+  if (res && res.success && res.data) return res.data;
   
-  // Fallback: si el script no soporta GET_USER, tenemos que buscar en la tabla 
-  // pero solo lo hacemos si somos admins o en el flujo de AuthGate (con cuidado)
-  const data = await fetchTableData('LIBRO_ACCIONISTAS');
-  const input = identifier.toLowerCase().trim();
-  return data.find(u => {
-    const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
-    const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
-    return uId === input || uEmail === input;
-  }) || null;
+  // Hemos eliminado el fallback de fetchTableData('LIBRO_ACCIONISTAS') 
+  // para evitar que se filtre la tabla completa en el network.
+  return null;
 }
 
 export async function saveShareholderAccount(uid: string, accountData: any): Promise<{success: boolean}> {
@@ -429,21 +422,28 @@ export async function logAccountChangeRequest(uid: string, currentAccount: strin
 }
 
 export async function fetchShareholderAccount(uid: string): Promise<any | null> {
-  const data = await fetchTableData('DATOS_PAGO_SOCIOS', true);
-  const targetUid = norm(uid);
-  const record = data.find(r => norm(findValue(r, ['UID_SOCIO', 'uid'])) === targetUid);
-  if (!record) return null;
+  // SEGURIDAD: Ya no pedimos toda la tabla DATOS_PAGO_SOCIOS.
+  // Pedimos específicamente la cuenta vinculada al UID a través de una acción segura.
+  const res = await sendToScript({
+    action: 'GET_ACCOUNT',
+    uid: uid
+  });
 
-  return {
-    type: String(findValue(record, ['TIPO_METODO', 'tipo']) || ''),
-    institution: String(findValue(record, ['INSTITUCION_NOMBRE', 'institucion']) || ''),
-    account: String(findValue(record, ['CUENTA_NUMERO', 'cuenta']) || ''),
-    network: String(findValue(record, ['TIPO_CUENTA_RED', 'red']) || ''),
-    platform: String(findValue(record, ['PAIS_EXCHANGE', 'plataforma']) || ''),
-    status: String(findValue(record, ['ESTATUS_VERIFICACION', 'estatus']) || 'PENDIENTE'),
-    requestPending: String(findValue(record, ['SOLICITUDES_CAMBIO', 'solicitud']) || '').toLowerCase().includes('solicitud'),
-    holderInfo: `${findValue(record, ['TITULAR_NOMBRE', 'nombre'])} (${findValue(record, ['TITULAR_DOC_NUM', 'documento'])})`
-  };
+  if (res && res.success && res.data) {
+    const record = res.data;
+    return {
+      type: String(findValue(record, ['TIPO_METODO', 'tipo']) || ''),
+      institution: String(findValue(record, ['INSTITUCION_NOMBRE', 'institucion']) || ''),
+      account: String(findValue(record, ['CUENTA_NUMERO', 'cuenta']) || ''),
+      network: String(findValue(record, ['TIPO_CUENTA_RED', 'red']) || ''),
+      platform: String(findValue(record, ['PAIS_EXCHANGE', 'plataforma']) || ''),
+      status: String(findValue(record, ['ESTATUS_VERIFICACION', 'estatus']) || 'PENDIENTE'),
+      requestPending: String(findValue(record, ['SOLICITUDES_CAMBIO', 'solicitud']) || '').toLowerCase().includes('solicitud'),
+      holderInfo: `${findValue(record, ['TITULAR_NOMBRE', 'nombre'])} (${findValue(record, ['TITULAR_DOC_NUM', 'documento'])})`
+    };
+  }
+  
+  return null;
 }
 
 export async function fetchReportsAdmin(ignoreCache = false): Promise<Report[]> {
