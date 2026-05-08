@@ -63,7 +63,7 @@ import { generateShareholderStatementPDF } from '../../lib/pdfService';
 
 interface ShareholderProfileProps {
   user: any;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack }) => {
@@ -430,12 +430,24 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
         
         {/* Navegación Superior */}
         <div className="flex justify-between items-center">
-          <button onClick={onBack} className="flex items-center gap-2 text-text-muted hover:text-accent font-black text-[10px] uppercase tracking-widest transition-all w-fit group">
-            <div className="p-2 bg-white rounded-xl border border-surface-border group-hover:border-primary transition-all">
-              <ArrowLeft size={16} />
+          {onBack ? (
+            <button onClick={onBack} className="flex items-center gap-2 text-text-muted hover:text-accent font-black text-[10px] uppercase tracking-widest transition-all w-fit group">
+              <div className="p-2 bg-white rounded-xl border border-surface-border group-hover:border-primary transition-all">
+                <ArrowLeft size={16} />
+              </div>
+              <span>Volver al Padrón</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-white rounded-xl border border-primary/20 shadow-sm">
+                <ShieldCheck size={18} className="text-primary" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-accent uppercase tracking-widest">Padrón Oficial</span>
+                <span className="text-[8px] font-bold text-text-muted uppercase">Conexión Segura</span>
+              </div>
             </div>
-            <span>Volver al Padrón</span>
-          </button>
+          )}
           
           <div className="flex gap-3">
              <button 

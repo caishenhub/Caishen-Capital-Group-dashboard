@@ -27,11 +27,12 @@ const UserManagement: React.FC = () => {
   const [error, setError] = useState(false);
   
   const [users, setUsers] = useState<any[]>([]);
+  const [sessionUser, setSessionUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const loadData = async (ignoreCache = false) => {
-    // Verificación de Rango: Solo administradores pueden ver la lista completa
     const sessionStr = localStorage.getItem('ccg_session_vault');
     if (!sessionStr) {
       setFetchError("Acceso no autorizado.");
@@ -41,17 +42,41 @@ const UserManagement: React.FC = () => {
     
     try {
       const session = JSON.parse(atob(sessionStr));
-      // Si no es admin, no permitimos la carga de la tabla completa
-      if (session.uid !== 'admin-caishen' && !session.email?.includes('admin')) {
-        setFetchError("Su perfil no tiene permisos para consultar el padrón global.");
+      const isUserAdmin = session.uid === 'admin-caishen' || session.uid === '#ADM-001' || session.email?.toLowerCase().includes('admin');
+      setIsAdmin(isUserAdmin);
+
+      if (!isUserAdmin) {
+        // FLUJO SOCIO: Buscamos solo SU información
+        if (!ignoreCache && !sessionUser) setIsLoading(true);
+        const data = await fetchTableData('LIBRO_ACCIONISTAS', ignoreCache);
+        const myData = data.find((u: any) => 
+          String(findValue(u, ['UID_SOCIO']) || '').trim().toLowerCase() === String(session.uid).toLowerCase()
+        );
+
+        if (myData) {
+          const mapped = {
+            id: 'self',
+            uid: String(findValue(myData, ['UID_SOCIO']) || ''),
+            name: String(findValue(myData, ['NOMBRE_COMPLETO']) || 'Mi Perfil'),
+            email: String(findValue(myData, ['EMAIL_SOCIO']) || ''),
+            status: String(findValue(myData, ['ESTATUS_SOCIO']) || 'Activo'),
+            shares: parseSheetNumber(findValue(myData, ['ACCIONES_POSEIDAS'])),
+            pin: String(findValue(myData, ['PIN_ACCESO']) || '0000'),
+            raw: myData
+          };
+          setSessionUser(mapped);
+          setSelectedUser(mapped);
+        } else {
+          setFetchError("No se encontraron sus datos en el padrón institucional.");
+        }
         setIsLoading(false);
         return;
       }
 
+      // FLUJO ADMIN: Carga completa
       if (!ignoreCache && users.length === 0) setIsLoading(true);
       setFetchError(null);
       
-      // Usamos el patrón de caché para velocidad, con refresco opcional
       const data = await fetchTableData('LIBRO_ACCIONISTAS', ignoreCache);
       
       if (!data || data.length === 0) {
@@ -191,7 +216,12 @@ const UserManagement: React.FC = () => {
   };
 
   if (selectedUser) {
-    return <ShareholderProfile user={selectedUser} onBack={() => setSelectedUser(null)} />;
+    return (
+      <ShareholderProfile 
+        user={selectedUser} 
+        onBack={isAdmin ? () => setSelectedUser(null) : undefined} 
+      />
+    );
   }
 
   return (
