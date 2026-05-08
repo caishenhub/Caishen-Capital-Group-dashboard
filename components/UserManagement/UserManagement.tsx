@@ -59,6 +59,7 @@ const UserManagement: React.FC = () => {
             status: String(findValue(myData, ['ESTATUS_SOCIO']) || 'Activo'),
             shares: parseSheetNumber(findValue(myData, ['ACCIONES_POSEIDAS'])),
             pin: String(findValue(myData, ['PIN_ACCESO']) || '0000'),
+            registrationDate: findValue(myData, ['FECHA_INGRESO']) || null,
             raw: myData
           };
           setSessionUser(mapped);
