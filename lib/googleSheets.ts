@@ -171,8 +171,10 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
   const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
     try {
+      const token = GOOGLE_CONFIG.SECURITY_TOKEN;
       // Usamos un timestamp simple para evitar caché agresivo del navegador
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&_=${Math.floor(Date.now() / 60000)}`;
+      // Incluimos el token de seguridad en la URL para que el Script lo valide
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&security_token=${encodeURIComponent(token)}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
         method: 'GET', 
@@ -225,12 +227,18 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
 async function sendToScript(payload: any) {
   try {
+    // Inject security token into all POST payloads
+    const securePayload = {
+      ...payload,
+      security_token: GOOGLE_CONFIG.SECURITY_TOKEN
+    };
+    
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(securePayload)
     });
     
     if (!response.ok) throw new Error(`POST Error: ${response.status}`);
@@ -361,6 +369,28 @@ export async function publishNotification(notice: Partial<CorporateNotification>
 export async function updateShareholderPin(uid: string, newPin: string): Promise<{success: boolean}> {
   const res = await sendToScript({ action: 'UPDATE_PIN', uid: uid, newPin: newPin });
   return { success: res.success === true };
+}
+
+export async function fetchUserByEmailOrId(identifier: string): Promise<any | null> {
+  // En lugar de fetchTableData('LIBRO_ACCIONISTAS'), pedimos una acción específica
+  // Esto requiere que el Apps Script soporte la acción 'GET_USER' o similar
+  // Si no lo soporta, caerá en el default de devolver la tabla, pero con el token
+  const res = await sendToScript({ 
+    action: 'GET_USER', 
+    id: identifier 
+  });
+  
+  if (res && res.data) return res.data;
+  
+  // Fallback: si el script no soporta GET_USER, tenemos que buscar en la tabla 
+  // pero solo lo hacemos si somos admins o en el flujo de AuthGate (con cuidado)
+  const data = await fetchTableData('LIBRO_ACCIONISTAS');
+  const input = identifier.toLowerCase().trim();
+  return data.find(u => {
+    const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
+    const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
+    return uId === input || uEmail === input;
+  }) || null;
 }
 
 export async function saveShareholderAccount(uid: string, accountData: any): Promise<{success: boolean}> {
@@ -606,11 +636,12 @@ export const warmUpCache = async () => {
     'REPORTE_ESTRATEGICO', 
     'KPI_PORTAFOLIO', 
     'ESTRUCTURA_PORTAFOLIO', 
-    'LIBRO_ACCIONISTAS', 
     'NOTIFICACIONES', 
-    'REPORTES_ADMIN',
-    'DATOS_PAGO_SOCIOS'
+    'REPORTES_ADMIN'
   ];
+  
+  // Tabs sensibles no se pre-vibran para evitar fugas en network global
+  // LIBRO_ACCIONISTAS y DATOS_PAGO_SOCIOS se manejan bajo demanda autenticada
   
   // Ejecutamos en paralelo pero con un pequeño delay entre grupos para no saturar
   const chunks = [];

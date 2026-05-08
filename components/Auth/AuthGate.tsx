@@ -1,20 +1,18 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, fetchUserByEmailOrId } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
   const [foundUser, setFoundUser] = useState<any>(null);
-  const [userPool, setUserPool] = useState<any[]>([]);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPoolLoading, setIsPoolLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const MAX_ATTEMPTS = 5;
@@ -36,18 +34,6 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       localStorage.removeItem('ccg_session_vault');
     }
     setIsLoading(false);
-
-    const loadUserPool = async () => {
-      try {
-        const data = await fetchTableData('LIBRO_ACCIONISTAS');
-        setUserPool(data || []);
-      } catch (e) {
-        console.error("Error cargando padrón preventivo:", e);
-      } finally {
-        setIsPoolLoading(false);
-      }
-    };
-    loadUserPool();
   }, []);
 
   const handleIdentifierSubmit = async (e: React.FormEvent) => {
@@ -63,16 +49,12 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsSyncing(true);
 
     try {
-      const user = userPool.find(u => {
-        const uId = String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase();
-        const uEmail = String(findValue(u, ['EMAIL_SOCIO', 'email', 'correo']) || '').toLowerCase();
-        return uId === input || uEmail === input;
-      });
+      // LLAMADA SEGURA: Solo pedimos los datos de UN usuario al servidor
+      const user = await fetchUserByEmailOrId(input);
 
       if (user) {
         setFoundUser(user);
         setShowPinModal(true);
-        warmUpCache(); 
         setError('');
       } else {
         setError('Socio no encontrado en el padrón oficial.');
@@ -176,11 +158,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="space-y-1">
             <h1 className="text-xl md:text-2xl font-black text-accent tracking-tighter uppercase">Portal Accionistas</h1>
             <div className="flex items-center justify-center gap-1.5 pt-1">
-              {isPoolLoading ? (
-                <span className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] animate-pulse">Sincronizando...</span>
-              ) : (
-                <span className="text-[8px] font-black text-primary uppercase tracking-[0.2em]">Acceso Seguro</span>
-              )}
+              <span className="text-[8px] font-black text-primary uppercase tracking-[0.2em]">Acceso Seguro</span>
             </div>
           </div>
         </div>

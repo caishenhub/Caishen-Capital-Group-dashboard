@@ -187,31 +187,92 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     syncProfileData();
   }, [user.uid]);
 
+  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  const getMonthNumber = (monthVal: any) => {
+    const months: Record<string, number> = {
+      'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6,
+      'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12
+    };
+    const m = String(monthVal).toUpperCase().trim();
+    return months[m] || parseInt(m) || 0;
+  };
+
   const stats = useMemo(() => {
     const regDate = user.registrationDate ? new Date(user.registrationDate) : null;
     const isValidDate = regDate && !isNaN(regDate.getTime());
     const regYear = isValidDate ? regDate.getFullYear() : 0;
     const regMonth = isValidDate ? regDate.getMonth() + 1 : 1;
 
-    const yearDividends = dividends.filter(d => {
+    const nominalValue = parseSheetNumber(findValue(config, ['VALOR_NOMINAL_ACCION'])) || 248.85;
+    const initialInvestment = user.shares * nominalValue;
+
+    // Filter and sort ALL historical dividends for this user since registration
+    const allUserDividends = dividends.filter(d => {
       const rowYear = parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0));
-      const rowMonth = parseInt(String(findValue(d, ['MES', 'mes', 'month']) || 0));
-      const isPostRegistration = (rowYear > regYear) || (rowYear === regYear && rowMonth >= regMonth);
-      return isPostRegistration && rowYear === selectedYear;
+      const rowMonth = getMonthNumber(findValue(d, ['MES', 'mes', 'month']));
+      return (rowYear > regYear) || (rowYear === regYear && rowMonth >= regMonth);
+    }).sort((a, b) => {
+      const yA = parseInt(String(findValue(a, ['ANIO']) || 0));
+      const mA = getMonthNumber(findValue(a, ['MES']));
+      const yB = parseInt(String(findValue(b, ['ANIO']) || 0));
+      const mB = getMonthNumber(findValue(b, ['MES']));
+      return (yA * 100 + mA) - (yB * 100 + mB);
+    });
+
+    let runningCapital = initialInvestment;
+    const historyWithCapital = allUserDividends.map(d => {
+      const startingCapital = runningCapital;
+      const yieldPct = parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'rentabilidad']));
+      
+      // Profit is always calculated on the current starting capital of the month
+      const profit = startingCapital * yieldPct;
+      
+      let dividend = 0;
+      if (profit > 0) {
+        // If we are below the initial investment (High Water Mark), profit recovers first
+        if (runningCapital < initialInvestment) {
+          const recovery = Math.min(profit, initialInvestment - runningCapital);
+          runningCapital += recovery;
+          dividend = profit - recovery;
+        } else {
+          // If at or above HWM, all profit is paid as dividend
+          dividend = profit;
+        }
+      } else {
+        // Negative profit reduces the capital base
+        runningCapital += profit;
+      }
+
+      return {
+        ...d,
+        startingCapital,
+        endingCapital: runningCapital,
+        calculatedProfit: profit,
+        dividend
+      };
+    });
+
+    // Sub-select only dividends for the UI table (selectedYear)
+    const yearData = historyWithCapital.filter(d => {
+      const rowYear = parseInt(String(findValue(d, ['ANIO', 'anio', 'year']) || 0));
+      return rowYear === selectedYear;
     });
     
-    const totalProfit = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD', 'utilidad'])), 0);
-    const totalYield = yearDividends.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'rentabilidad'])), 0);
-    const nominalValue = parseSheetNumber(findValue(config, ['VALOR_NOMINAL_ACCION'])) || 248.85;
-    const balance = user.shares * nominalValue;
+    // Aggregates for cards
+    const totalProfit = yearData.reduce((acc, d) => acc + d.calculatedProfit, 0);
+    const totalYield = yearData.reduce((acc, d) => acc + parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT', 'rentabilidad'])), 0);
     const totalSharesFund = parseSheetNumber(findValue(config, ['TOTAL_ACCIONES_FONDO'])) || 500;
 
     return {
-      balance,
+      initialInvestment,
+      currentCapital: runningCapital,
+      isRecoveryMode: runningCapital < (initialInvestment - 0.01), // float tolerance
+      recoveryProgress: (runningCapital / initialInvestment) * 100,
       totalProfit,
       totalYield,
       participation: ((user.shares / (totalSharesFund || 1)) * 100).toFixed(2),
-      yearData: yearDividends
+      yearData
     };
   }, [dividends, selectedYear, config, user.shares, user.registrationDate]);
 
@@ -360,7 +421,8 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
     }
   };
 
-  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  const [showCoverageInfo, setShowCoverageInfo] = useState(false);
 
   return (
     <div className="bg-[#fcfcfc] animate-in fade-in slide-in-from-right-4 duration-500 pb-40 min-h-screen">
@@ -448,12 +510,84 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { label: 'Acciones', value: user.shares.toString(), sub: 'Registro Central', icon: Target },
-                { label: 'Participación', value: stats.participation + '%', sub: 'Fondo Institucional', icon: PieIcon },
-                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Acumulado', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown },
-                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Liquidado en Nube', icon: DollarSign },
+                { 
+                  label: 'Capital de Inversión', 
+                  value: `$${stats.currentCapital.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 
+                  sub: stats.isRecoveryMode ? 'Cobertura de Patrimonio' : 'Patrimonio Nominal', 
+                  icon: Target,
+                  info: stats.isRecoveryMode ? {
+                    title: 'Relación de Cobertura',
+                    content: `Su capital base se encuentra en un protocolo de restauración tras el desempeño histórico. Una vez alcanzado el balance nominal ($${stats.initialInvestment.toLocaleString('en-US')}), se reanudará la dispersión total de dividendos.`,
+                    progress: stats.recoveryProgress,
+                    nominal: stats.initialInvestment
+                  } : null
+                },
+                { label: 'Participación', value: stats.participation + '%', sub: `${user.shares} Acciones Poseídas`, icon: PieIcon },
+                { label: `Rendimiento ${selectedYear}`, value: (stats.totalYield * 100).toFixed(2) + '%', sub: 'Retorno Institucional', icon: stats.totalYield >= 0 ? TrendingUp : TrendingDown },
+                { label: 'Utilidad Neta', value: `$${stats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: 'Excedente Liquidable', icon: DollarSign },
               ].map((stat, i) => (
-                <div key={i} className="bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all">
+                <div key={i} className={`bg-white rounded-[32px] shadow-sm border border-surface-border p-7 flex flex-col justify-between hover:shadow-premium transition-all relative group/stat`}>
+                  {stat.info && (
+                    <div className="absolute top-4 right-4 z-20">
+                      <button 
+                        onClick={() => setShowCoverageInfo(!showCoverageInfo)}
+                        className={`p-2 rounded-full transition-all border ${showCoverageInfo ? 'bg-orange-500 text-white border-orange-500 shadow-neon-sm' : 'bg-surface-subtle text-text-muted hover:text-orange-500 hover:bg-orange-50 border-transparent hover:border-orange-100'}`}
+                      >
+                        <Info size={14} />
+                      </button>
+                      
+                      {/* Discrete Popover - Click Triggered */}
+                      {showCoverageInfo && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowCoverageInfo(false)} />
+                          <div className="absolute top-full right-0 mt-3 w-64 bg-white shadow-2xl border border-surface-border rounded-2xl p-6 animate-in zoom-in-95 fade-in duration-200 z-50 origin-top-right">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-accent mb-4 border-b border-gray-50 pb-2">Restauración de Base</h4>
+                            
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-[9px] font-bold text-text-secondary">
+                                  <span className="uppercase tracking-tighter">Balance Nominal:</span>
+                                  <span className="text-accent">${stat.info.nominal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between text-[9px] font-bold text-text-secondary">
+                                  <span className="uppercase tracking-tighter">Monto Pendiente:</span>
+                                  <span className="text-orange-600">${(stat.info.nominal - stats.currentCapital).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-inner">
+                                  <div 
+                                    className="h-full bg-orange-500 shadow-neon-sm transition-all duration-1000" 
+                                    style={{ width: `${stat.info.progress}%` }}
+                                  />
+                                </div>
+                                <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-orange-500">
+                                  <span>Cobertura</span>
+                                  <span>{stat.info.progress.toFixed(1)}%</span>
+                                </div>
+                              </div>
+
+                              <p className="text-[8px] font-bold text-text-muted leading-tight uppercase text-center border-t border-gray-50 pt-3">
+                                El capital se restablecerá con las utilidades generadas antes de la dispersión total
+                              </p>
+                              
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowCoverageInfo(false);
+                                }}
+                                className="w-full mt-2 py-2 text-[8px] font-black uppercase tracking-widest text-text-muted hover:text-accent transition-colors"
+                              >
+                                Cerrar Panel
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <div className="p-3 w-fit bg-surface-subtle rounded-2xl mb-4 text-accent"><stat.icon size={20} /></div>
                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">{stat.label}</h3>
                   <div className="text-3xl font-black tracking-tighter text-accent">{stat.value}</div>
@@ -480,21 +614,28 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                     <tr className="bg-surface-subtle text-[10px] font-black text-text-muted uppercase tracking-widest border-b border-surface-border">
                       <th className="px-8 py-5">Mes Operativo</th>
                       <th className="px-8 py-5">Estatus</th>
+                      <th className="px-8 py-5 text-right">Capital Base</th>
                       <th className="px-8 py-5 text-right">Rentabilidad</th>
                       <th className="px-8 py-5 text-right font-black text-accent">Utilidad USD</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {stats.yearData.length > 0 ? stats.yearData.sort((a,b) => findValue(a, ['MES']) - findValue(b, ['MES'])).map((d, i) => {
+                    {stats.yearData.length > 0 ? stats.yearData.sort((a,b) => getMonthNumber(findValue(a, ['MES'])) - getMonthNumber(findValue(b, ['MES']))).map((d, i) => {
                       const rentabilidad = parseSheetNumber(findValue(d, ['RENTABILIDAD_MES_PCT']));
-                      const utilidad = parseSheetNumber(findValue(d, ['UTILIDAD_NETA_USD']));
+                      const utilidad = d.calculatedProfit;
+                      const capBase = d.startingCapital;
                       
                       return (
                         <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-8 py-5"><span className="text-sm font-black text-accent uppercase">{monthNames[findValue(d, ['MES']) - 1]}</span></td>
+                          <td className="px-8 py-5"><span className="text-sm font-black text-accent uppercase">{monthNames[getMonthNumber(findValue(d, ['MES'])) - 1]}</span></td>
                           <td className="px-8 py-5">
                             <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${findValue(d, ['ESTATUS_PAGO']) === 'PAGADO' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
                               {findValue(d, ['ESTATUS_PAGO']) || 'PENDIENTE'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                            <span className="text-xs font-bold text-text-secondary">
+                              ${capBase.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </span>
                           </td>
                           <td className={`px-8 py-5 text-right font-bold ${rentabilidad < 0 ? 'text-red-500' : 'text-text-secondary'}`}>
@@ -884,7 +1025,7 @@ const ShareholderProfile: React.FC<ShareholderProfileProps> = ({ user, onBack })
                   <button 
                     onClick={confirmPinUpdate} 
                     disabled={isUpdatingPin || pinBuffer.length < 4} 
-                    className="h-16 rounded-2xl bg-accent text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-30"
+                    className="h-16 rounded-2xl bg-accent text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-30 flex items-center justify-center"
                   >
                     {isUpdatingPin ? <RefreshCw className="animate-spin" size={20} /> : 'OK'}
                   </button>

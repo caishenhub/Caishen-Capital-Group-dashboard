@@ -5,7 +5,8 @@ import { Asset, Transaction, Report, User, CorporateNotification, AdminNotificat
 export const GOOGLE_CONFIG = {
   // URL MAESTRA ACTUALIZADA POR EL USUARIO
   SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbwnZW8iOTcd1S3NJZXvjQm2IcF_ZgpbLMwA8hII2AE75Pei2aZmPI3aYr0AHIKQop7Ezw/exec',
-  TAB_NAME: 'CONFIG_MAESTRA'
+  TAB_NAME: 'CONFIG_MAESTRA',
+  SECURITY_TOKEN: 'CCG_SECURE_ACCESS_2026' // Token de seguridad institucional
 };
 
 // --- SISTEMA DE PERSISTENCIA SEGMENTADA ---

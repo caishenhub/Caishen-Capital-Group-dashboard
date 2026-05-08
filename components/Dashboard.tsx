@@ -9,6 +9,7 @@ import {
   findValue, 
   parseSheetNumber, 
   fetchPortfolioStructure, 
+  fetchUserByEmailOrId,
   PortfolioCategory,
   DATA_UPDATED_EVENT 
 } from '../lib/googleSheets';
@@ -53,9 +54,8 @@ const Dashboard: React.FC = () => {
   const loadConfigs = async (isBackground = false, forceRefresh = false) => {
     if (!isBackground) setIsLoading(true);
     try {
-      const [configData, sociosData, performanceData, pData] = await Promise.all([
+      const [configData, performanceData, pData] = await Promise.all([
         fetchTableData('CONFIG_MAESTRA', forceRefresh),
-        fetchTableData('LIBRO_ACCIONISTAS', forceRefresh),
         fetchTableData('HISTORIAL_RENDIMIENTOS', forceRefresh),
         fetchPortfolioStructure(forceRefresh)
       ]);
@@ -64,20 +64,17 @@ const Dashboard: React.FC = () => {
       setHistoryData(performanceData || []);
       setPortfolioData(pData || []);
       
-      const sessionStr = localStorage.getItem('ccg_session');
-      if (sessionStr && sociosData) {
-        const session = JSON.parse(sessionStr);
-        const updatedUser = sociosData.find(u => 
-          String(findValue(u, ['UID_SOCIO', 'uid', 'id_socio']) || '').toLowerCase() === String(session.uid).toLowerCase()
-        );
+      const sessionStr = localStorage.getItem('ccg_session_vault');
+      if (sessionStr) {
+        // Obtenemos solo los datos actualizados de NUESTRO usuario
+        const session = JSON.parse(atob(sessionStr));
+        const updatedUser = await fetchUserByEmailOrId(session.uid);
         
         if (updatedUser) {
           const newShares = parseInt(findValue(updatedUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0');
           if (newShares !== session.shares) {
-            localStorage.setItem('ccg_session', JSON.stringify({
-              ...session,
-              shares: newShares
-            }));
+            const updatedSession = { ...session, shares: newShares };
+            localStorage.setItem('ccg_session_vault', btoa(JSON.stringify(updatedSession)));
             window.dispatchEvent(new window.Event('finance_update'));
           }
         }
@@ -97,7 +94,7 @@ const Dashboard: React.FC = () => {
     // Listen for background updates
     const handleDataUpdate = (e: any) => {
       const { tabName } = e.detail;
-      const relevantTabs = ['CONFIG_MAESTRA', 'LIBRO_ACCIONISTAS', 'HISTORIAL_RENDIMIENTOS', 'ESTRUCTURA_PORTAFOLIO'];
+      const relevantTabs = ['CONFIG_MAESTRA', 'HISTORIAL_RENDIMIENTOS', 'ESTRUCTURA_PORTAFOLIO'];
       if (relevantTabs.includes(tabName)) {
         loadConfigs(true, false);
       }

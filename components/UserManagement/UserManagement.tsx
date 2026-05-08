@@ -31,9 +31,26 @@ const UserManagement: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const loadData = async (ignoreCache = false) => {
-    if (!ignoreCache && users.length === 0) setIsLoading(true);
-    setFetchError(null);
+    // Verificación de Rango: Solo administradores pueden ver la lista completa
+    const sessionStr = localStorage.getItem('ccg_session_vault');
+    if (!sessionStr) {
+      setFetchError("Acceso no autorizado.");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
+      const session = JSON.parse(atob(sessionStr));
+      // Si no es admin, no permitimos la carga de la tabla completa
+      if (session.uid !== 'admin-caishen' && !session.email?.includes('admin')) {
+        setFetchError("Su perfil no tiene permisos para consultar el padrón global.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!ignoreCache && users.length === 0) setIsLoading(true);
+      setFetchError(null);
+      
       // Usamos el patrón de caché para velocidad, con refresco opcional
       const data = await fetchTableData('LIBRO_ACCIONISTAS', ignoreCache);
       
