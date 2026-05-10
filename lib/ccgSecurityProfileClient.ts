@@ -4,9 +4,7 @@
  * Cliente unificado con el nuevo Master Engine.
  */
 
-import { GOOGLE_CONFIG } from '../constants';
-
-const SECURITY_WEBAPP_URL = GOOGLE_CONFIG.SCRIPT_API_URL;
+import { updateShareholderPin, updateShareholderProfile } from './googleSheets';
 
 export interface ProfileUpdateData {
   TELEFONO?: string;
@@ -17,51 +15,11 @@ export interface ProfileUpdateData {
 }
 
 export async function ccgUpdatePin(uid: string, newPin: string): Promise<{ success: boolean; error?: string }> {
-  if (!uid) return { success: false, error: 'UID de socio requerido' };
-  
-  const payload = {
-    action: 'UPDATE_PIN',
-    uid: uid,
-    newPin: newPin
-  };
-
-  try {
-    const response = await fetch(SECURITY_WEBAPP_URL, {
-      method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    return { success: result.success === true || result.status === 'success', error: result.error };
-  } catch (e) {
-    return { success: false, error: 'Error de comunicación' };
-  }
+  const result = await updateShareholderPin(uid, newPin);
+  return { success: result.success, error: result.success ? undefined : 'Error al actualizar PIN' };
 }
 
 export async function ccgUpdateProfile(uid: string, data: ProfileUpdateData): Promise<{ success: boolean; error?: string }> {
-  if (!uid) return { success: false, error: 'UID de socio requerido' };
-
-  const payload = {
-    action: 'UPDATE_PROFILE',
-    uid: uid,
-    ...data
-  };
-
-  try {
-    const response = await fetch(SECURITY_WEBAPP_URL, {
-      method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    return { success: result.success === true || result.status === 'success', error: result.error };
-  } catch (e) {
-    return { success: false, error: 'Error al actualizar perfil' };
-  }
+  const result = await updateShareholderProfile(uid, data);
+  return { success: result.success, error: result.success ? undefined : 'Error al actualizar perfil' };
 }

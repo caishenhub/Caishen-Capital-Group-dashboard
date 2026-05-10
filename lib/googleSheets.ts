@@ -193,100 +193,57 @@ export const setSecuritySession = (userId: string | null, isAdmin: boolean) => {
 async function fetchFromServer(tabName: string): Promise<any[]> {
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
 
-  // SEGURIDAD: Tablas sensibles NO se piden por GET (visibles en network)
-  // Se piden por POST ofuscado para mayor privacidad
-  const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN', 'DIVIDENDOS_SOCIOS', 'REPORTES_SOCIOS'];
-  
-  if (sensitiveTabs.includes(tabName)) {
-    inFlightRequests[tabName] = (async () => {
-      try {
-        // --- FILTRADO DE PRIVACIDAD EN EL ORIGEN ---
-        // Si no es admin, forzamos el filtrado en el servidor para que solo devuelva SUS filas
-        const useScopedFetch = !currentSession.isAdmin;
-        
-        const response = await sendToScript({
-          action: useScopedFetch ? 'GET_SCOPED_DATA' : 'GET_TABLE',
-          tab: tabName,
-          uid: currentSession.userId // Enviamos el ID para que el servidor filtre
-        });
-        
-        if (response && response.success && response.data) {
-          // Si el servidor devolvió un objeto único, lo convertimos a array para el dashboard
-          const data = Array.isArray(response.data) ? response.data : [response.data];
-          setLocalCache(tabName, data);
-          return data;
-        }
-        
-        const errorMsg = response?.error || 'Error de respuesta';
-        if (errorMsg.includes('leerTabla is not defined')) {
-          console.error(`❌ ERROR DE CONFIGURACIÓN: Falta la función "leerTabla" en tu App Script.`);
-          console.info("%cINSTRUCCIÓN: Copia la función 'leerTabla' proporcionada por el asistente en tu Editor de App Script para habilitar la vista de administrador.", "color: #3b82f6; font-weight: bold;");
-        } else {
-          console.error(`Error recuperando tabla sensible ${tabName}:`, errorMsg);
-        }
-        
-        delete inFlightRequests[tabName];
-        return [];
-      } catch (err) {
-        console.error(`Fallo de conexión con tabla ${tabName}:`, err);
-        delete inFlightRequests[tabName];
-        return [];
-      }
-    })();
-    return inFlightRequests[tabName];
-  }
-
   const localCached = getLocalCache(tabName);
 
-  const fetchWithRetry = async (attempt: number = 0): Promise<any[]> => {
+  inFlightRequests[tabName] = (async () => {
     try {
-      const token = GOOGLE_CONFIG.SECURITY_TOKEN;
-      // Usamos un timestamp simple para evitar caché agresivo del navegador
-      // Incluimos el token de seguridad en la URL para que el Script lo valide
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&token=${encodeURIComponent(token)}&_=${Math.floor(Date.now() / 60000)}`;
+      // SEGURIDAD UNIFICADA: Todas las peticiones ahora viajan por POST ofuscado
+      // Esto elimina los errores de "Acceso Protegido" del Network
+      const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN', 'DIVIDENDOS_SOCIOS', 'REPORTES_SOCIOS'];
+      const isSensitive = sensitiveTabs.includes(tabName);
       
-      const response = await fetch(url, { 
-        method: 'GET', 
-        mode: 'cors', 
-        redirect: 'follow'
-      });
-      
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      
-      const json = await response.json();
-      
-      if (json.error) {
-        console.warn(`API Error in ${tabName}:`, json.error);
-        return localCached?.data || [];
-      }
+      // Si no es admin y es una tabla sensible, pedimos solo los datos del usuario (SCOPED)
+      // Si es una tabla pública (como NOTIFICACIONES), pedimos la tabla completa (GET_TABLE)
+      const useScopedFetch = !currentSession.isAdmin && isSensitive;
 
-      const rows = Array.isArray(json) ? json : (json.rows || []);
-      const processedData = rows.map((row: any) => {
-        const cleanRow: any = {};
-        Object.keys(row).forEach(key => { 
-          if(key) cleanRow[key.toString().trim()] = row[key]; 
+      const response = await sendToScript({
+        action: useScopedFetch ? 'GET_SCOPED_DATA' : 'GET_TABLE',
+        tab: tabName,
+        uid: currentSession.userId,
+        _isPublic: !isSensitive
+      });
+
+      if (response && response.success && response.data) {
+        const data = Array.isArray(response.data) ? response.data : [response.data];
+        
+        // Procesamiento básico de saneamiento de headers
+        const processedData = data.map((row: any) => {
+          const cleanRow: any = {};
+          Object.keys(row).forEach(key => { 
+            if(key) cleanRow[key.toString().trim()] = row[key]; 
+          });
+          return cleanRow;
         });
-        return cleanRow;
-      });
 
-      setLocalCache(tabName, processedData);
-      return processedData;
-    } catch (err) {
-      if (attempt < MAX_RETRIES) {
-        // Espera exponencial corta antes de reintentar
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-        return fetchWithRetry(attempt + 1);
+        setLocalCache(tabName, processedData);
+        return processedData;
       }
-      console.error(`Fetch error for ${tabName} after ${MAX_RETRIES} retries:`, err);
-      // Fallback crítico: si falla todo, devolvemos lo que tengamos en caché local aunque sea viejo
+      
+      if (response?.error) {
+        console.warn(`Error en ${tabName}:`, response.error);
+      }
+      
+      // Fallback a caché local si el servidor falla
+      return localCached?.data || [];
+    } catch (err) {
+      console.error(`Fallo crítico de comunicación con ${tabName}:`, err);
+      delete inFlightRequests[tabName];
       return localCached?.data || [];
     }
-  };
+  })();
 
-  const fetchPromise = fetchWithRetry();
-  inFlightRequests[tabName] = fetchPromise;
+  const fetchPromise = inFlightRequests[tabName];
   
-  // Limpieza de la promesa en vuelo después de terminar
   fetchPromise.finally(() => {
     delete inFlightRequests[tabName];
   });
@@ -294,7 +251,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
   return fetchPromise;
 }
 
-async function sendToScript(payload: any) {
+export async function sendToScript(payload: any) {
   try {
     // Inject security token into all POST payloads
     const securePayload = {
@@ -449,8 +406,21 @@ export async function publishNotification(notice: Partial<CorporateNotification>
 }
 
 export async function updateShareholderPin(uid: string, newPin: string): Promise<{success: boolean}> {
-  const res = await sendToScript({ action: 'UPDATE_PIN', uid: uid, newPin: newPin });
+  const res = await sendToScript({ 
+    action: 'UPDATE_PROFILE', 
+    uid: uid, 
+    updates: { 'PIN_ACCESO': newPin } 
+  });
   return { success: res.success === true };
+}
+
+export async function updateShareholderProfile(uid: string, updates: any): Promise<{success: boolean}> {
+  const res = await sendToScript({ 
+    action: 'UPDATE_PROFILE', 
+    uid: uid, 
+    updates: updates 
+  });
+  return { success: res && res.success === true };
 }
 
 export async function fetchUserByEmailOrId(identifier: string): Promise<any | null> {
@@ -469,10 +439,9 @@ export async function fetchUserByEmailOrId(identifier: string): Promise<any | nu
 
 export async function saveShareholderAccount(uid: string, accountData: any): Promise<{success: boolean}> {
   const res = await sendToScript({
-    action: 'append',
-    tab: 'DATOS_PAGO_SOCIOS',
-    data: {
-      UID_SOCIO: uid,
+    action: 'SAVE_ACCOUNT',
+    uid: uid,
+    accountData: {
       TIPO_METODO: accountData.type,
       TITULAR_NOMBRE: accountData.holderName,
       TITULAR_DOC_TIPO: accountData.docType || 'N/A',
@@ -483,11 +452,10 @@ export async function saveShareholderAccount(uid: string, accountData: any): Pro
       PAIS_EXCHANGE: accountData.platform,
       CODIGO_SWIFT_BIC: accountData.swiftCode || 'N/A',
       FECHA_REGISTRO: new Date().toISOString(),
-      ESTATUS_VERIFICACION: 'PENDIENTE',
-      SOLICITUDES_CAMBIO: ''
+      ESTATUS_VERIFICACION: 'PENDIENTE'
     }
   });
-  return { success: res.success === true };
+  return { success: res && res.success === true };
 }
 
 export async function logAccountChangeRequest(uid: string, currentAccount: string): Promise<{success: boolean}> {
