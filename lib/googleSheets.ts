@@ -186,13 +186,42 @@ const secureDecode = (encoded: string): any => {
 async function fetchFromServer(tabName: string): Promise<any[]> {
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
 
-  // SEGURIDAD: Evitar que tablas sensibles se pidan por GET de forma abierta
+  // SEGURIDAD: Tablas sensibles NO se piden por GET (visibles en network)
+  // Se piden por POST ofuscado para mayor privacidad
   const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN'];
-  if (sensitiveTabs.includes(tabName)) {
-    console.warn(`Intento de acceso directo a tabla sensible detectado: ${tabName}`);
-    // No permitimos la descarga masiva por GET si es una tabla sensible
-    // El usuario debe usar las acciones seguras de POST
-    return [];
+  
+    if (sensitiveTabs.includes(tabName)) {
+    inFlightRequests[tabName] = (async () => {
+      try {
+        const response = await sendToScript({
+          action: 'GET_TABLE',
+          tab: tabName
+        });
+        
+        if (response && response.success && Array.isArray(response.data)) {
+          setLocalCache(tabName, response.data);
+          return response.data;
+        }
+        
+        const errorMsg = response?.error || 'Error de respuesta';
+        if (errorMsg.includes('leerTabla is not defined')) {
+          console.error(`❌ ERROR DE CONFIGURACIÓN: Falta la función "leerTabla" en tu App Script.`);
+          // Mostramos un aviso más descriptivo en consola para el usuario
+          console.info("%cINSTRUCCIÓN: Copia la función 'leerTabla' proporcionada por el asistente en tu Editor de App Script para habilitar la vista de administrador.", "color: #3b82f6; font-weight: bold;");
+        } else {
+          console.error(`Error recuperando tabla sensible ${tabName}:`, errorMsg);
+        }
+        
+        // No cacheamos errores para permitir reintentos
+        delete inFlightRequests[tabName];
+        return [];
+      } catch (err) {
+        console.error(`Fallo de conexión con tabla ${tabName}:`, err);
+        delete inFlightRequests[tabName];
+        return [];
+      }
+    })();
+    return inFlightRequests[tabName];
   }
 
   const localCached = getLocalCache(tabName);

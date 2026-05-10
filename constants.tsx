@@ -4,7 +4,7 @@ import { Asset, Transaction, Report, User, CorporateNotification, AdminNotificat
 // --- CONFIGURACIÓN GOOGLE INTEGRATION ---
 export const GOOGLE_CONFIG = {
   // URL MAESTRA ACTUALIZADA POR EL USUARIO
-  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbzbhxVJ07v3_VRvBbj97sohQgb-sHgId2PGcwvLSgFYvspCoddQkjhvaPm4BdF-G3f6tw/exec',
+  SCRIPT_API_URL: 'https://script.google.com/macros/s/AKfycbzB07rg4_FmuuMCElmZXGMU7Go6OrUDieG5PZVqqUB5YJsUxqbHuq1mS_NG8NKwAuLFMg/exec',
   TAB_NAME: 'CONFIG_MAESTRA',
   SECURITY_TOKEN: 'CCG_SECURE_ACCESS_2026' // Token de seguridad institucional
 };
