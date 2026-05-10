@@ -195,22 +195,23 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
 
   // SEGURIDAD: Tablas sensibles NO se piden por GET (visibles en network)
   // Se piden por POST ofuscado para mayor privacidad
-  const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN'];
+  const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN', 'DIVIDENDOS_SOCIOS', 'REPORTES_SOCIOS'];
   
   if (sensitiveTabs.includes(tabName)) {
     inFlightRequests[tabName] = (async () => {
       try {
         // --- FILTRADO DE PRIVACIDAD EN EL ORIGEN ---
-        // Si no es admin y pide una tabla sensible, forzamos el filtrado por su propio ID
-        const useScopedFetch = !currentSession.isAdmin && tabName === 'LIBRO_ACCIONISTAS';
+        // Si no es admin, forzamos el filtrado en el servidor para que solo devuelva SUS filas
+        const useScopedFetch = !currentSession.isAdmin;
         
         const response = await sendToScript({
-          action: useScopedFetch ? 'GET_USER' : 'GET_TABLE',
+          action: useScopedFetch ? 'GET_SCOPED_DATA' : 'GET_TABLE',
           tab: tabName,
-          id: useScopedFetch ? currentSession.userId : undefined // Solo pedimos su ID
+          uid: currentSession.userId // Enviamos el ID para que el servidor filtre
         });
         
         if (response && response.success && response.data) {
+          // Si el servidor devolvió un objeto único, lo convertimos a array para el dashboard
           const data = Array.isArray(response.data) ? response.data : [response.data];
           setLocalCache(tabName, data);
           return data;
