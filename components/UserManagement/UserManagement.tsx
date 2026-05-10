@@ -42,7 +42,8 @@ const UserManagement: React.FC = () => {
     
     try {
       const session = JSON.parse(atob(sessionStr));
-      const isUserAdmin = session.uid === 'admin-caishen' || session.uid === '#ADM-001' || session.email?.toLowerCase().includes('admin');
+      const uid = String(session.uid || '');
+      const isUserAdmin = uid.startsWith('#ADM') || uid === 'admin-caishen' || session.email?.toLowerCase().includes('admin');
       setIsAdmin(isUserAdmin);
 
       if (!isUserAdmin) {

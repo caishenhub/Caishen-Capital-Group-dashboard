@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, AlertCircle, X, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
-import { fetchTableData, findValue, warmUpCache, fetchUserByEmailOrId } from '../../lib/googleSheets';
+import { fetchTableData, findValue, warmUpCache, fetchUserByEmailOrId, setSecuritySession } from '../../lib/googleSheets';
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -24,6 +24,10 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         // Validación básica de integridad de sesión
         const session = JSON.parse(atob(encryptedSession));
         if (session && session.ts && (Date.now() - session.ts < 1000 * 60 * 60 * 24)) {
+          // Restaurar sesión de seguridad en la capa de datos
+          const isAdmin = String(session.uid || '').startsWith('#ADM');
+          setSecuritySession(session.uid, isAdmin);
+          
           setIsAuthenticated(true);
           warmUpCache();
         } else {
@@ -74,8 +78,11 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const userPin = String(findValue(foundUser, ['PIN_ACCESO', 'pin', 'clave']) || '');
 
     if (userPin === pin) {
+      const uid = findValue(foundUser, ['UID_SOCIO', 'uid']);
+      const isAdmin = String(uid || '').startsWith('#ADM');
+      
       const sessionData = { 
-        uid: findValue(foundUser, ['UID_SOCIO', 'uid']), 
+        uid: uid, 
         name: findValue(foundUser, ['NOMBRE_COMPLETO', 'name', 'nombre']), 
         email: findValue(foundUser, ['EMAIL_SOCIO', 'email']),
         shares: parseInt(findValue(foundUser, ['ACCIONES_POSEIDAS', 'shares', 'acciones']) || '0'),
@@ -85,6 +92,9 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       // Ofuscación de sesión (Base64) - Capa básica de protección visual
       localStorage.setItem('ccg_session_vault', btoa(JSON.stringify(sessionData)));
       localStorage.removeItem('ccg_session'); // Limpiar sesión antigua insegura
+      
+      // Establecer sesión de seguridad global para filtrado de red
+      setSecuritySession(uid, isAdmin);
       
       setIsAuthenticated(true);
       setShowPinModal(false);

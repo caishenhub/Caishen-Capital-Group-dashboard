@@ -183,6 +183,13 @@ const secureDecode = (encoded: string): any => {
   }
 };
 
+// Global security context for scoped requests
+let currentSession: { userId: string | null; isAdmin: boolean } = { userId: null, isAdmin: false };
+
+export const setSecuritySession = (userId: string | null, isAdmin: boolean) => {
+  currentSession = { userId, isAdmin };
+};
+
 async function fetchFromServer(tabName: string): Promise<any[]> {
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
 
@@ -190,29 +197,33 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
   // Se piden por POST ofuscado para mayor privacidad
   const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN'];
   
-    if (sensitiveTabs.includes(tabName)) {
+  if (sensitiveTabs.includes(tabName)) {
     inFlightRequests[tabName] = (async () => {
       try {
+        // --- FILTRADO DE PRIVACIDAD EN EL ORIGEN ---
+        // Si no es admin y pide una tabla sensible, forzamos el filtrado por su propio ID
+        const useScopedFetch = !currentSession.isAdmin && tabName === 'LIBRO_ACCIONISTAS';
+        
         const response = await sendToScript({
-          action: 'GET_TABLE',
-          tab: tabName
+          action: useScopedFetch ? 'GET_USER' : 'GET_TABLE',
+          tab: tabName,
+          id: useScopedFetch ? currentSession.userId : undefined // Solo pedimos su ID
         });
         
-        if (response && response.success && Array.isArray(response.data)) {
-          setLocalCache(tabName, response.data);
-          return response.data;
+        if (response && response.success && response.data) {
+          const data = Array.isArray(response.data) ? response.data : [response.data];
+          setLocalCache(tabName, data);
+          return data;
         }
         
         const errorMsg = response?.error || 'Error de respuesta';
         if (errorMsg.includes('leerTabla is not defined')) {
           console.error(`❌ ERROR DE CONFIGURACIÓN: Falta la función "leerTabla" en tu App Script.`);
-          // Mostramos un aviso más descriptivo en consola para el usuario
           console.info("%cINSTRUCCIÓN: Copia la función 'leerTabla' proporcionada por el asistente en tu Editor de App Script para habilitar la vista de administrador.", "color: #3b82f6; font-weight: bold;");
         } else {
           console.error(`Error recuperando tabla sensible ${tabName}:`, errorMsg);
         }
         
-        // No cacheamos errores para permitir reintentos
         delete inFlightRequests[tabName];
         return [];
       } catch (err) {
