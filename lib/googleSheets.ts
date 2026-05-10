@@ -164,8 +164,36 @@ export async function fetchTableData(tabName: string, ignoreCache = false): Prom
   return fetchFromServer(tabName);
 }
 
+// Helper to encode/decode data to avoid casual network snooping
+const secureEncode = (data: any): string => {
+  try {
+    const jsonStr = JSON.stringify(data);
+    return btoa(unescape(encodeURIComponent(jsonStr)));
+  } catch (e) {
+    return "";
+  }
+};
+
+const secureDecode = (encoded: string): any => {
+  try {
+    const jsonStr = decodeURIComponent(escape(atob(encoded)));
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    return null;
+  }
+};
+
 async function fetchFromServer(tabName: string): Promise<any[]> {
   if (tabName in inFlightRequests) return inFlightRequests[tabName];
+
+  // SEGURIDAD: Evitar que tablas sensibles se pidan por GET de forma abierta
+  const sensitiveTabs = ['LIBRO_ACCIONISTAS', 'DATOS_PAGO_SOCIOS', 'REPORTES_ADMIN'];
+  if (sensitiveTabs.includes(tabName)) {
+    console.warn(`Intento de acceso directo a tabla sensible detectado: ${tabName}`);
+    // No permitimos la descarga masiva por GET si es una tabla sensible
+    // El usuario debe usar las acciones seguras de POST
+    return [];
+  }
 
   const localCached = getLocalCache(tabName);
 
@@ -174,7 +202,7 @@ async function fetchFromServer(tabName: string): Promise<any[]> {
       const token = GOOGLE_CONFIG.SECURITY_TOKEN;
       // Usamos un timestamp simple para evitar caché agresivo del navegador
       // Incluimos el token de seguridad en la URL para que el Script lo valide
-      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&security_token=${encodeURIComponent(token)}&_=${Math.floor(Date.now() / 60000)}`;
+      const url = `${PROFILE_API_URL}?tab=${encodeURIComponent(tabName)}&token=${encodeURIComponent(token)}&_=${Math.floor(Date.now() / 60000)}`;
       
       const response = await fetch(url, { 
         method: 'GET', 
@@ -230,25 +258,38 @@ async function sendToScript(payload: any) {
     // Inject security token into all POST payloads
     const securePayload = {
       ...payload,
-      security_token: GOOGLE_CONFIG.SECURITY_TOKEN
+      token: GOOGLE_CONFIG.SECURITY_TOKEN,
+      _secure: true // Flag para indicar que esperamos respuesta ofuscada
     };
     
+    // Ofuscación del payload de salida
+    const encodedPayload = secureEncode(securePayload);
+
     const response = await fetch(PROFILE_API_URL, {
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(securePayload)
+      body: encodedPayload // Enviamos ofuscado
     });
     
     if (!response.ok) throw new Error(`POST Error: ${response.status}`);
     
     const text = await response.text();
+    
+    // Intentamos decodificar si parece estar ofuscado (Base64)
+    let finalJson: any;
     try {
-      return JSON.parse(text);
+      if (text.length > 20 && !text.startsWith('{')) {
+        finalJson = secureDecode(text);
+      } else {
+        finalJson = JSON.parse(text);
+      }
     } catch (e) {
-      return { success: text.includes('success') || response.ok };
+       finalJson = { success: text.includes('success') || response.ok };
     }
+    
+    return finalJson;
   } catch (err) {
     console.error("Communication error (POST):", err);
     return { success: false, error: String(err) };
@@ -372,8 +413,7 @@ export async function updateShareholderPin(uid: string, newPin: string): Promise
 }
 
 export async function fetchUserByEmailOrId(identifier: string): Promise<any | null> {
-  // SEGURIDAD CRÍTICA: Solo usamos POST para pedir UN usuario específico al servidor.
-  // El servidor devolverá null si el token es inválido o el usuario no existe.
+  // SEGURIDAD CRÍTICA: Priorizamos POST para pedir solo UN usuario.
   const res = await sendToScript({ 
     action: 'GET_USER', 
     id: identifier 
@@ -381,8 +421,8 @@ export async function fetchUserByEmailOrId(identifier: string): Promise<any | nu
   
   if (res && res.success && res.data) return res.data;
   
-  // Hemos eliminado el fallback de fetchTableData('LIBRO_ACCIONISTAS') 
-  // para evitar que se filtre la tabla completa en el network.
+  // Hemos eliminado totalmente el fallback de fetchTableData('LIBRO_ACCIONISTAS')
+  // para evitar filtraciones masivas de datos sensibles en el network.
   return null;
 }
 
@@ -422,8 +462,7 @@ export async function logAccountChangeRequest(uid: string, currentAccount: strin
 }
 
 export async function fetchShareholderAccount(uid: string): Promise<any | null> {
-  // SEGURIDAD: Ya no pedimos toda la tabla DATOS_PAGO_SOCIOS.
-  // Pedimos específicamente la cuenta vinculada al UID a través de una acción segura.
+  // SEGURIDAD: Solo pedimos los datos por acción específica GET_ACCOUNT vía POST
   const res = await sendToScript({
     action: 'GET_ACCOUNT',
     uid: uid
